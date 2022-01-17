@@ -24,7 +24,10 @@ typedef struct Value {
 } Value;
 
 typedef struct Function {
+  /* function name */
   char *name;
+
+  /* function body byte code */
   i32 code_length;
   Byte *code;
 } Function;
