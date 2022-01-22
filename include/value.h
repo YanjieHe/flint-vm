@@ -23,9 +23,14 @@ typedef struct Value {
   } u;
 } Value;
 
+typedef struct String {
+  i32 length;
+  char *characters;
+} String;
+
 typedef struct Function {
   /* function name */
-  char *name;
+  String *name;
 
   /* function body byte code */
   i32 code_length;
@@ -34,7 +39,7 @@ typedef struct Function {
 
 typedef struct Module {
   /* module name */
-  char *name;
+  String *name;
 
   /* constant pool */
   i32 constant_pool_size;
@@ -44,5 +49,18 @@ typedef struct Module {
   i32 function_count;
   Function *functions;
 } Module;
+
+typedef struct Program {
+  /* program byte code file name */
+  char *file_name;
+
+  /* modules */
+  i32 module_count;
+  Module *modules;
+} Program;
+
+Program *create_program(char *file_name, i32 module_count);
+void free_string(String *str);
+char* str_to_c_str(String* str);
 
 #endif
