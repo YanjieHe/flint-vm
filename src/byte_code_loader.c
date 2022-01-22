@@ -196,35 +196,49 @@ void load_module(ByteCodeLoader *loader, Module *module) {
 
 Program *read_byte_code_file(ByteCodeLoader *loader) {
   Program *program;
+  u16 entry_module;
+  u16 entry_function;
   u16 module_count;
   int i;
   int j;
   int k;
 
-  module_count = read_u16(loader);
-  printf("module count = %d\n", (int)module_count);
+  entry_module = read_u16(loader);
   if (loader->error_messages) {
-    printf("fail to read the count of modules\n");
     utarray_push_back(loader->error_messages,
-                      "fail to read the count of modules");
+                      "fail to read the entry module offset");
     return NULL;
   } else {
-    program = create_program(loader->file_name, module_count);
-    for (i = 0; i < module_count; i++) {
-      load_module(loader, &(program->modules[i]));
+    entry_function = read_u16(loader);
+    if (loader->error_messages) {
+      utarray_push_back(loader->error_messages,
+                        "fail to read the entry function offset");
+      return NULL;
+    } else {
+      module_count = read_u16(loader);
       if (loader->error_messages) {
-        utarray_push_back(loader->error_messages, "fail to read module");
-        for (j = 0; j < i; j++) {
-          for (k = 0; k < program->modules[j].function_count; k++) {
-            free(program->modules[j].functions[k].code);
-            free_string(program->modules[j].functions[k].name);
-          }
-          free(program->modules[j].functions);
-          free_string(program->modules[j].name);
-        }
-        free(program->modules);
-        free(program->file_name);
+        utarray_push_back(loader->error_messages,
+                          "fail to read the count of modules");
         return NULL;
+      } else {
+        program = create_program(loader->file_name, module_count);
+        for (i = 0; i < module_count; i++) {
+          load_module(loader, &(program->modules[i]));
+          if (loader->error_messages) {
+            utarray_push_back(loader->error_messages, "fail to read module");
+            for (j = 0; j < i; j++) {
+              for (k = 0; k < program->modules[j].function_count; k++) {
+                free(program->modules[j].functions[k].code);
+                free_string(program->modules[j].functions[k].name);
+              }
+              free(program->modules[j].functions);
+              free_string(program->modules[j].name);
+            }
+            free(program->modules);
+            free(program->file_name);
+            return NULL;
+          }
+        }
       }
     }
     return program;
