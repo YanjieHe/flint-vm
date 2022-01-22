@@ -1,5 +1,5 @@
-#ifndef FLINT_TYPE_H
-#define FLINT_TYPE_H
+#ifndef FLINT_VM_TYPE_H
+#define FLINT_VM_TYPE_H
 
 enum Type {
   TYPE_EMPTY = 0,

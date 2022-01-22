@@ -12,6 +12,8 @@ Program *create_program(char *file_name, i32 module_count) {
   strcpy(program->file_name, file_name);
   program->module_count = module_count;
   program->modules = malloc(sizeof(Module) * module_count);
+  program->entry_module = 0;
+  program->entry_function = 0;
 
   return program;
 }

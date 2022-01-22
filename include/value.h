@@ -57,6 +57,10 @@ typedef struct Program {
   /* modules */
   i32 module_count;
   Module *modules;
+
+  /* entry */
+  u16 entry_module;
+  u16 entry_function;
 } Program;
 
 Program *create_program(char *file_name, i32 module_count);
