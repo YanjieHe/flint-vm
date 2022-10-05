@@ -10,4 +10,6 @@ enum Type {
   TYPE_STRING = 5
 };
 
+const char* type_to_string(int type);
+
 #endif

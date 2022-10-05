@@ -1,4 +1,5 @@
 #include "byte_code_loader.h"
+
 #include <stdlib.h>
 
 ByteCodeLoader *create_byte_code_loader(char *file_name) {
@@ -276,10 +277,13 @@ void view_function(Function *function) {
   printf("function name: %s\n", function_name);
   free(function_name);
   printf("function code length: %d\n", function->code_length);
-  printf("function code:");
+  printf("function code: { ");
   for (i = 0; i < function->code_length; i++) {
-    printf(" ");
+    if (i != 0) {
+      printf(", ");
+    }
     printf("%d", function->code[i]);
   }
+  printf(" }");
   printf("\n");
 }
