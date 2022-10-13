@@ -17,9 +17,9 @@ struct String;
 struct Array;
 struct Structure;
 
+/* if the 'type' is a negative number, it means the value is not marked, which
+  * is an essential information for garbage collection. */
 typedef struct Value {
-  /* if the 'type' is a negative number, it means the value is not marked, which
-   * is an essential information for garbage collection. */
   i32 type;
 
   /* all types of data */
@@ -143,4 +143,4 @@ Program *create_program(char *file_name, i32 module_count);
 void free_string(String *str);
 char *str_to_c_str(String *str);
 
-#endif
+#endif /* VALUE_H */

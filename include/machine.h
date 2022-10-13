@@ -24,6 +24,10 @@ typedef struct Machine {
 
 Machine *create_machine(i32 stack_max_size);
 
-void run_machine(Machine* machine);
+void run_machine(Machine *machine);
+
+void update_machine_state(Machine *machine, i32 sp, i32 fp, i32 pc);
+
+void free_machine(Machine *machine);
 
 #endif

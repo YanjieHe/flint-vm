@@ -1,0 +1,4 @@
+#ifndef FLINT_VM_TEST_ARRAY_H
+#define FLINT_VM_TEST_ARRAY_H
+
+#endif /* FLINT_VM_TEST_ARRAY_H */

@@ -2,6 +2,11 @@
 
 #include <stdlib.h>
 
+/*
+* @brief create a byte code loader
+* @param file_name byte code file
+* @return The byte code loader. If the file doesn't exist, returns NULL.
+*/
 ByteCodeLoader *create_byte_code_loader(char *file_name) {
   FILE *file;
   ByteCodeLoader *loader;

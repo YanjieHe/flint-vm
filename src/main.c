@@ -1,12 +1,17 @@
 #include <stdio.h>
 
-#include "byte_code_loader.h"
-#include "machine.h"
+#include "test.h"
+#include "test_arithmetic.h"
 
 
 #define STACK_MAX_SIZE 10000
 
 int main(int argc, char **argv) {
+  total_tests = 0;
+  passed_tests = 0;
+  test_add();
+  test_results_summary();
+  /*
   ByteCodeLoader *loader;
   Program *program;
   Machine *machine;
@@ -33,5 +38,6 @@ int main(int argc, char **argv) {
   } else {
     printf("fail to load the byte code file\n");
   }
+  */
   return 0;
 }
