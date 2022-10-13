@@ -85,13 +85,13 @@ void run_machine(Machine *machine) {
 
   array = NULL;
 
-  printf("code length: %d\n", code_length);
+  /* printf("code length: %d\n", code_length); */
 
   while (pc < code_length) {
 
     op = code[pc];
     pc++;
-    printf("op = %s\n", opcode_info[op][0]);
+    /* printf("op = %s\n", opcode_info[op][0]); */
 
     switch (op) {
     case PUSH_I32_0: {

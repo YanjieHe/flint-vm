@@ -2,6 +2,7 @@
 
 #include "test.h"
 #include "test_arithmetic.h"
+#include "test_array.h"
 
 
 #define STACK_MAX_SIZE 10000
@@ -10,6 +11,7 @@ int main(int argc, char **argv) {
   total_tests = 0;
   passed_tests = 0;
   test_add();
+  test_create_an_array();
   test_results_summary();
   /*
   ByteCodeLoader *loader;
