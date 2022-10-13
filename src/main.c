@@ -10,8 +10,11 @@
 int main(int argc, char **argv) {
   total_tests = 0;
   passed_tests = 0;
+
   test_add();
   test_create_an_array();
+  test_create_an_illegal_array();
+
   test_results_summary();
   /*
   ByteCodeLoader *loader;

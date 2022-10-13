@@ -8,10 +8,21 @@ typedef struct Environment {
   Module *module;
 } Environment;
 
+enum MachineStatus {
+  MACHINE_STOPPED,
+  MACHINE_RUNNING,
+  MACHINE_COMPLETED,
+
+  /* runtime errors */
+  RUNTIME_ERROR_ARRAY_LENGTH_LESS_THAN_ZERO
+};
+
 typedef struct Machine {
   /* stack for evaluation */
   i32 stack_max_size;
   Value *stack;
+  u32* is_gc_object;
+  GCObject* heap;
 
   /* current environment */
   Environment env;
@@ -20,6 +31,9 @@ typedef struct Machine {
   i32 sp; /* stack pointer */
   i32 fp; /* function pointer */
   i32 pc; /* program counter */
+
+  /* status code */
+  i32 machine_status;
 } Machine;
 
 Machine *create_machine(i32 stack_max_size);
