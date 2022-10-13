@@ -6,6 +6,7 @@
 #include <stdio.h>
 
 
+/* @brief It loads the byte code from a disk file. */
 typedef struct ByteCodeLoader {
   char *file_name;
   FILE *file;

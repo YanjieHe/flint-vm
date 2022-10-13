@@ -73,19 +73,25 @@ void run_machine(Machine *machine) {
   u32 left_type;
   u32 right_type;
 
+  /* temporary storage */
+  Array* array;
+
+  stack = machine->stack;
   code = machine->env.function->code;
   code_length = machine->env.function->code_length;
   sp = machine->sp;
   fp = machine->fp;
   pc = machine->pc;
 
-  printf("code length: %d\n", code_length);
+  array = NULL;
+
+  /* printf("code length: %d\n", code_length); */
 
   while (pc < code_length) {
 
     op = code[pc];
     pc++;
-    printf("op = %s\n", opcode_info[op][0]);
+    /* printf("op = %s\n", opcode_info[op][0]); */
 
     switch (op) {
     case PUSH_I32_0: {
@@ -94,6 +100,20 @@ void run_machine(Machine *machine) {
     }
     case PUSH_I32_1: {
       STACK_PUSH_I32(1);
+      break;
+    }
+    case PUSH_I32_1BYTE: {
+      sp++;
+      stack[sp].u.i32_v = code[pc];
+      stack[sp].type = TYPE_I32;
+      pc++;
+      break;
+    }
+    case PUSH_I32_2BYTES: {
+      sp++;
+      stack[sp].u.i32_v = (code[pc] << 8) + (code[pc + 1]);
+      stack[sp].type = TYPE_I32;
+      pc = pc + 2;
       break;
     }
     case ADD_I32: {
@@ -225,6 +245,29 @@ void run_machine(Machine *machine) {
       }
       break;
     }
+    case PUSH_ARRAY_I32: {
+      sp++;
+      array = malloc(sizeof(Array));
+      /* TO DO: check the length of the array */
+      array->length = stack[sp - 1].u.i32_v;
+      array->u.i32_array = malloc(sizeof(i32) * array->length);
+      stack[sp].u.arr_v = array;
+      array = NULL;
+      break;
+    }
     }
   }
+
+  update_machine_state(machine, sp, fp, pc);
+}
+
+void update_machine_state(Machine *machine, i32 sp, i32 fp, i32 pc) {
+  machine->sp = sp;
+  machine->fp = fp;
+  machine->pc = pc;
+}
+
+void free_machine(Machine *machine) {
+  free(machine->stack);
+  free(machine);
 }
