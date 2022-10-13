@@ -18,7 +18,8 @@ void test_add() {
   load_program_on_machine(program, machine, 0, 0);
   run_machine(machine);
 
-  ASSERT_EQUAL(machine->stack[machine->sp].u.i32_v, 527);
+  ASSERT_EQUAL(machine->stack[machine->sp].i32_v, 527);
+  ASSERT_EQUAL(machine->machine_status, MACHINE_COMPLETED);
 
   free_program_with_single_function(program);
   free_machine(machine);

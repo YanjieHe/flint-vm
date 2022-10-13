@@ -6,43 +6,39 @@
 
 #define STACK_PUSH_I32(VALUE)                                                  \
   sp++;                                                                        \
-  stack[sp].u.i32_v = (VALUE);                                                 \
-  stack[sp].type = TYPE_I32;
+  stack[sp].i32_v = (VALUE);
 
 #define STACK_PUSH_I64(VALUE)                                                  \
   sp++;                                                                        \
-  stack[sp].u.i64_v = (VALUE);                                                 \
-  stack[sp].type = TYPE_I64;
+  stack[sp].i64_v = (VALUE);
 
 #define STACK_PUSH_F32(VALUE)                                                  \
   sp++;                                                                        \
-  stack[sp].u.f32_v = (VALUE);                                                 \
-  stack[sp].type = TYPE_F32;
+  stack[sp].f32_v = (VALUE);
 
 #define STACK_PUSH_F64(VALUE)                                                  \
   sp++;                                                                        \
-  stack[sp].u.f64_v = (VALUE);                                                 \
-  stack[sp].type = TYPE_F64;
+  stack[sp].f64_v = (VALUE);
 
 #define STACK_POP_I32(VALUE)                                                   \
-  (VALUE) = stack[sp].u.i32_v;                                                 \
-  stack[sp].type = TYPE_EMPTY;                                                 \
+  (VALUE) = stack[sp].i32_v;                                                   \
   sp--;
 
 #define STACK_POP_I64(VALUE)                                                   \
-  (VALUE) = stack[sp].u.i64_v;                                                 \
-  stack[sp].type = TYPE_EMPTY;                                                 \
+  (VALUE) = stack[sp].i64_v;                                                   \
   sp--;
 
 #define STACK_POP_F32(VALUE)                                                   \
-  (VALUE) = stack[sp].u.f32_v;                                                 \
-  stack[sp].type = TYPE_EMPTY;                                                 \
+  (VALUE) = stack[sp].f32_v;                                                   \
   sp--;
 
 #define STACK_POP_F64(VALUE)                                                   \
-  (VALUE) = stack[sp].u.f64_v;                                                 \
-  stack[sp].type = TYPE_EMPTY;                                                 \
+  (VALUE) = stack[sp].f64_v;                                                   \
   sp--;
+
+#define HEAP_PUT(HEAP, GC_OBJECT)                                              \
+  (GC_OBJECT)->next = (HEAP);                                                  \
+  (HEAP) = (GC_OBJECT);
 
 Machine *create_machine(i32 stack_max_size) {
   Machine *machine;
@@ -50,11 +46,14 @@ Machine *create_machine(i32 stack_max_size) {
   machine = malloc(sizeof(Machine));
   machine->stack_max_size = stack_max_size;
   machine->stack = malloc(sizeof(Value) * stack_max_size);
+  machine->is_gc_object = malloc(sizeof(int) * stack_max_size);
+  machine->heap = NULL;
   machine->env.function = NULL;
   machine->env.module = NULL;
   machine->sp = -1;
   machine->fp = 0;
   machine->pc = 0;
+  machine->machine_status = MACHINE_STOPPED;
 
   return machine;
 }
@@ -65,6 +64,7 @@ void run_machine(Machine *machine) {
   i32 code_length;
   Byte op;
   Value *stack;
+  u32 *is_gc_object;
   i32 sp;
   i32 fp;
   i32 pc;
@@ -74,15 +74,19 @@ void run_machine(Machine *machine) {
   u32 right_type;
 
   /* temporary storage */
-  Array* array;
+  Array *array;
+  i32 length;
 
   stack = machine->stack;
+  is_gc_object = machine->is_gc_object;
   code = machine->env.function->code;
   code_length = machine->env.function->code_length;
   sp = machine->sp;
   fp = machine->fp;
   pc = machine->pc;
+  machine->machine_status = MACHINE_RUNNING;
 
+  length = 0;
   array = NULL;
 
   /* printf("code length: %d\n", code_length); */
@@ -104,161 +108,217 @@ void run_machine(Machine *machine) {
     }
     case PUSH_I32_1BYTE: {
       sp++;
-      stack[sp].u.i32_v = code[pc];
-      stack[sp].type = TYPE_I32;
+      stack[sp].i32_v = code[pc];
       pc++;
       break;
     }
     case PUSH_I32_2BYTES: {
       sp++;
-      stack[sp].u.i32_v = (code[pc] << 8) + (code[pc + 1]);
-      stack[sp].type = TYPE_I32;
+      stack[sp].i32_v = (code[pc] << 8) + (code[pc + 1]);
       pc = pc + 2;
       break;
     }
     case ADD_I32: {
-      stack[sp - 1].u.i32_v = (stack[sp - 1].u.i32_v + stack[sp].u.i32_v);
-      stack[sp].type = TYPE_EMPTY;
+      stack[sp - 1].i32_v = (stack[sp - 1].i32_v + stack[sp].i32_v);
       sp--;
       break;
     }
     case SUB_I32: {
-      stack[sp - 1].u.i32_v = (stack[sp - 1].u.i32_v - stack[sp].u.i32_v);
-      stack[sp].type = TYPE_EMPTY;
+      stack[sp - 1].i32_v = (stack[sp - 1].i32_v - stack[sp].i32_v);
       sp--;
       break;
     }
     case MUL_I32: {
-      stack[sp - 1].u.i32_v = (stack[sp - 1].u.i32_v * stack[sp].u.i32_v);
-      stack[sp].type = TYPE_EMPTY;
+      stack[sp - 1].i32_v = (stack[sp - 1].i32_v * stack[sp].i32_v);
       sp--;
       break;
     }
     case DIV_I32: {
-      stack[sp - 1].u.i32_v = (stack[sp - 1].u.i32_v / stack[sp].u.i32_v);
-      stack[sp].type = TYPE_EMPTY;
+      stack[sp - 1].i32_v = (stack[sp - 1].i32_v / stack[sp].i32_v);
       sp--;
       break;
     }
     case ADD_I64: {
-      stack[sp - 1].u.i64_v = (stack[sp - 1].u.i64_v + stack[sp].u.i64_v);
-      stack[sp].type = TYPE_EMPTY;
+      stack[sp - 1].i64_v = (stack[sp - 1].i64_v + stack[sp].i64_v);
       sp--;
       break;
     }
     case SUB_I64: {
-      stack[sp - 1].u.i64_v = (stack[sp - 1].u.i64_v - stack[sp].u.i64_v);
-      stack[sp].type = TYPE_EMPTY;
+      stack[sp - 1].i64_v = (stack[sp - 1].i64_v - stack[sp].i64_v);
       sp--;
       break;
     }
     case MUL_I64: {
-      stack[sp - 1].u.i64_v = (stack[sp - 1].u.i64_v * stack[sp].u.i64_v);
-      stack[sp].type = TYPE_EMPTY;
+      stack[sp - 1].i64_v = (stack[sp - 1].i64_v * stack[sp].i64_v);
       sp--;
       break;
     }
     case DIV_I64: {
-      stack[sp - 1].u.i64_v = (stack[sp - 1].u.i64_v / stack[sp].u.i64_v);
-      stack[sp].type = TYPE_EMPTY;
+      stack[sp - 1].i64_v = (stack[sp - 1].i64_v / stack[sp].i64_v);
       sp--;
       break;
     }
     case ADD_F32: {
-      stack[sp - 1].u.f32_v = (stack[sp - 1].u.f32_v + stack[sp].u.f32_v);
-      stack[sp].type = TYPE_EMPTY;
+      stack[sp - 1].f32_v = (stack[sp - 1].f32_v + stack[sp].f32_v);
       sp--;
       break;
     }
     case SUB_F32: {
-      stack[sp - 1].u.f32_v = (stack[sp - 1].u.f32_v - stack[sp].u.f32_v);
-      stack[sp].type = TYPE_EMPTY;
+      stack[sp - 1].f32_v = (stack[sp - 1].f32_v - stack[sp].f32_v);
       sp--;
       break;
     }
     case MUL_F32: {
-      stack[sp - 1].u.f32_v = (stack[sp - 1].u.f32_v * stack[sp].u.f32_v);
-      stack[sp].type = TYPE_EMPTY;
+      stack[sp - 1].f32_v = (stack[sp - 1].f32_v * stack[sp].f32_v);
       sp--;
       break;
     }
     case DIV_F32: {
-      stack[sp - 1].u.f32_v = (stack[sp - 1].u.f32_v / stack[sp].u.f32_v);
-      stack[sp].type = TYPE_EMPTY;
+      stack[sp - 1].f32_v = (stack[sp - 1].f32_v / stack[sp].f32_v);
       sp--;
       break;
     }
     case ADD_F64: {
-      stack[sp - 1].u.f64_v = (stack[sp - 1].u.f64_v + stack[sp].u.f64_v);
-      stack[sp].type = TYPE_EMPTY;
+      stack[sp - 1].f64_v = (stack[sp - 1].f64_v + stack[sp].f64_v);
       sp--;
       break;
     }
     case SUB_F64: {
-      stack[sp - 1].u.f64_v = (stack[sp - 1].u.f64_v - stack[sp].u.f64_v);
-      stack[sp].type = TYPE_EMPTY;
+      stack[sp - 1].f64_v = (stack[sp - 1].f64_v - stack[sp].f64_v);
       sp--;
       break;
     }
     case MUL_F64: {
-      stack[sp - 1].u.f64_v = (stack[sp - 1].u.f64_v * stack[sp].u.f64_v);
-      stack[sp].type = TYPE_EMPTY;
+      stack[sp - 1].f64_v = (stack[sp - 1].f64_v * stack[sp].f64_v);
       sp--;
       break;
     }
     case DIV_F64: {
-      stack[sp - 1].u.f64_v = (stack[sp - 1].u.f64_v / stack[sp].u.f64_v);
-      stack[sp].type = TYPE_EMPTY;
+      stack[sp - 1].f64_v = (stack[sp - 1].f64_v / stack[sp].f64_v);
       sp--;
       break;
     }
-    case ADD_DYNAMIC: {
-      left_type = stack[sp - 1].type;
-      right_type = stack[sp].type;
-      if (left_type == right_type) {
-        switch (left_type) {
-        case TYPE_I32: {
-          stack[sp - 1].u.i32_v = (stack[sp - 1].u.i32_v + stack[sp].u.i32_v);
-          break;
-        }
-        case TYPE_I64: {
-          stack[sp - 1].u.i64_v = (stack[sp - 1].u.i64_v + stack[sp].u.i64_v);
-          break;
-        }
-        case TYPE_F32: {
-          stack[sp - 1].u.f32_v = (stack[sp - 1].u.f32_v + stack[sp].u.f32_v);
-          break;
-        }
-        case TYPE_F64: {
-          stack[sp - 1].u.f64_v = (stack[sp - 1].u.f64_v + stack[sp].u.f64_v);
-          break;
-        }
-        default: {
-          /* throw error */
-          break;
-        }
-          stack[sp].type = TYPE_EMPTY;
-          sp--;
-        }
-      } else {
-        /* throw error */
-      }
+    case MINUS_I32: {
+      stack[sp].i32_v = -stack[sp].i32_v;
+      break;
+    }
+    case MINUS_I64: {
+      stack[sp].i64_v = -stack[sp].i64_v;
+      break;
+    }
+    case MINUS_F32: {
+      stack[sp].f32_v = -stack[sp].f32_v;
+      break;
+    }
+    case MINUS_F64: {
+      stack[sp].f64_v = -stack[sp].f64_v;
       break;
     }
     case PUSH_ARRAY_I32: {
-      sp++;
-      array = malloc(sizeof(Array));
-      /* TO DO: check the length of the array */
-      array->length = stack[sp - 1].u.i32_v;
-      array->u.i32_array = malloc(sizeof(i32) * array->length);
-      stack[sp].u.arr_v = array;
-      array = NULL;
-      break;
+      length = stack[sp].i32_v;
+      if (length >= 0) {
+        array = malloc(sizeof(Array));
+        array->length = length;
+        array->u.i32_array = malloc(sizeof(i32) * length);
+
+        sp++;
+        stack[sp].obj_v = malloc(sizeof(GCObject));
+        stack[sp].obj_v->kind = GCOBJECT_KIND_I32_ARRAY;
+        stack[sp].obj_v->u.arr_v = array;
+        HEAP_PUT(machine->heap, stack[sp].obj_v);
+        is_gc_object[sp] = 1;
+        break;
+      } else {
+        update_machine_state(machine, sp, fp, pc);
+        machine->machine_status = RUNTIME_ERROR_ARRAY_LENGTH_LESS_THAN_ZERO;
+        return;
+      }
+    }
+    case PUSH_ARRAY_I64: {
+      length = stack[sp].i32_v;
+      if (length >= 0) {
+        array = malloc(sizeof(Array));
+        array->length = length;
+        array->u.i64_array = malloc(sizeof(i64) * length);
+
+        sp++;
+        stack[sp].obj_v = malloc(sizeof(GCObject));
+        stack[sp].obj_v->kind = GCOBJECT_KIND_I64_ARRAY;
+        stack[sp].obj_v->u.arr_v = array;
+        HEAP_PUT(machine->heap, stack[sp].obj_v);
+        is_gc_object[sp] = 1;
+        break;
+      } else {
+        update_machine_state(machine, sp, fp, pc);
+        machine->machine_status = RUNTIME_ERROR_ARRAY_LENGTH_LESS_THAN_ZERO;
+        return;
+      }
+    }
+    case PUSH_ARRAY_F32: {
+      length = stack[sp].i32_v;
+      if (length >= 0) {
+        array = malloc(sizeof(Array));
+        array->length = length;
+        array->u.f32_array = malloc(sizeof(f32) * length);
+
+        sp++;
+        stack[sp].obj_v = malloc(sizeof(GCObject));
+        stack[sp].obj_v->kind = GCOBJECT_KIND_F32_ARRAY;
+        stack[sp].obj_v->u.arr_v = array;
+        HEAP_PUT(machine->heap, stack[sp].obj_v);
+        is_gc_object[sp] = 1;
+        break;
+      } else {
+        update_machine_state(machine, sp, fp, pc);
+        machine->machine_status = RUNTIME_ERROR_ARRAY_LENGTH_LESS_THAN_ZERO;
+        return;
+      }
+    }
+    case PUSH_ARRAY_F64: {
+      length = stack[sp].i32_v;
+      if (length >= 0) {
+        array = malloc(sizeof(Array));
+        array->length = length;
+        array->u.f64_array = malloc(sizeof(f64) * length);
+
+        sp++;
+        stack[sp].obj_v = malloc(sizeof(GCObject));
+        stack[sp].obj_v->kind = GCOBJECT_KIND_F64_ARRAY;
+        stack[sp].obj_v->u.arr_v = array;
+        HEAP_PUT(machine->heap, stack[sp].obj_v);
+        is_gc_object[sp] = 1;
+        break;
+      } else {
+        update_machine_state(machine, sp, fp, pc);
+        machine->machine_status = RUNTIME_ERROR_ARRAY_LENGTH_LESS_THAN_ZERO;
+        return;
+      }
+    }
+    case PUSH_ARRAY_OBJECT: {
+      length = stack[sp].i32_v;
+      if (length >= 0) {
+        array = malloc(sizeof(Array));
+        array->length = length;
+        array->u.obj_array = malloc(sizeof(GCObject *) * length);
+
+        sp++;
+        stack[sp].obj_v = malloc(sizeof(GCObject));
+        stack[sp].obj_v->kind = GCOBJECT_KIND_OBJ_ARRAY;
+        stack[sp].obj_v->u.arr_v = array;
+        HEAP_PUT(machine->heap, stack[sp].obj_v);
+        is_gc_object[sp] = 1;
+        break;
+      } else {
+        update_machine_state(machine, sp, fp, pc);
+        machine->machine_status = RUNTIME_ERROR_ARRAY_LENGTH_LESS_THAN_ZERO;
+        return;
+      }
     }
     }
   }
 
   update_machine_state(machine, sp, fp, pc);
+  machine->machine_status = MACHINE_COMPLETED;
 }
 
 void update_machine_state(Machine *machine, i32 sp, i32 fp, i32 pc) {
@@ -268,6 +328,17 @@ void update_machine_state(Machine *machine, i32 sp, i32 fp, i32 pc) {
 }
 
 void free_machine(Machine *machine) {
+  GCObject *current;
+  GCObject *next;
+
+  current = machine->heap;
+  while (current != NULL) {
+    next = current->next;
+    free_gc_object(current);
+    current = next;
+  }
+
   free(machine->stack);
+  free(machine->is_gc_object);
   free(machine);
 }

@@ -17,44 +17,49 @@ struct String;
 struct Array;
 struct Structure;
 
-/* if the 'type' is a negative number, it means the value is not marked, which
-  * is an essential information for garbage collection. */
-typedef struct Value {
-  i32 type;
+typedef union {
+  i32 i32_v;
+  i64 i64_v;
+  f32 f32_v;
+  f64 f64_v;
+  struct GCObject *obj_v;
+} Value;
 
-  /* all types of data */
+typedef enum GCObjectKind {
+  GCOBJECT_KIND_STRING,
+  GCOBJECT_KIND_I32_ARRAY,
+  GCOBJECT_KIND_I64_ARRAY,
+  GCOBJECT_KIND_F32_ARRAY,
+  GCOBJECT_KIND_F64_ARRAY,
+  GCOBJECT_KIND_OBJ_ARRAY,
+  GCOBJECT_KIND_OBJECT
+} GCObjectKind;
+
+typedef struct GCObject {
+  /* garbage collection information */
+  struct GCObject *next;
+
+  GCObjectKind kind;
   union {
-    i32 i32_v;
-    i64 i64_v;
-    f32 f32_v;
-    f64 f64_v;
     struct String *str_v;
     struct Array *arr_v;
     struct Structure *struct_v;
   } u;
-} Value;
+} GCObject;
 
 typedef struct String {
-  /* garbage collection information */
-  Value *next;
-
-  /* string data */
   i32 length;
   char *characters;
 } String;
 
 typedef struct Array {
-  /* garbage collection information */
-  Value *next;
-
-  /* array data */
   i32 length;
   union {
     i32 *i32_array;
     i64 *i64_array;
     f32 *f32_array;
     f64 *f64_array;
-    Value *val_array;
+    GCObject **obj_array;
   } u;
 } Array;
 
@@ -77,16 +82,13 @@ typedef struct StructureInfo {
 } StructureInfo;
 
 typedef struct Structure {
-  /* garbage collection information */
-  Value *next;
-
-  /* structure data */
   StructureInfo *info;
+  u16 n_values;
   Value *values;
 } Structure;
 
 typedef struct Method {
-  Structure* self;
+  Structure *self;
 
   /* method name */
   String *name;
@@ -119,7 +121,7 @@ typedef struct Module {
 
   /* structures */
   i32 structure_count;
-  Structure* structures;
+  Structure *structures;
 } Module;
 
 typedef struct Program {
@@ -142,5 +144,6 @@ typedef struct Program {
 Program *create_program(char *file_name, i32 module_count);
 void free_string(String *str);
 char *str_to_c_str(String *str);
+void free_gc_object(GCObject* gc_object);
 
 #endif /* VALUE_H */
