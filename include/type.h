@@ -2,14 +2,14 @@
 #define FLINT_VM_TYPE_H
 
 enum Type {
-  TYPE_EMPTY = 0,
-  TYPE_I32 = 1,
-  TYPE_I64 = 2,
-  TYPE_F32 = 3,
-  TYPE_F64 = 4,
-  TYPE_STRING = 5
+  TYPE_I32 = 0,
+  TYPE_I64 = 1,
+  TYPE_F32 = 2,
+  TYPE_F64 = 3,
+  TYPE_STRING = 4,
 };
 
-const char* type_to_string(int type);
+static const char *type_name[] = {"Integer32", "Integer64", "Float32",
+                                  "Float64", "String"};
 
 #endif

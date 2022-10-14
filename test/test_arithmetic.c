@@ -12,7 +12,6 @@ void test_add() {
 
   program =
       create_program_with_single_function(code, sizeof(code) / sizeof(Byte));
-
   machine = create_machine(100);
 
   load_program_on_machine(program, machine, 0, 0);
