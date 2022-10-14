@@ -20,6 +20,11 @@
   sp++;                                                                        \
   stack[sp].f64_v = (VALUE);
 
+#define STACK_PUSH_OBJECT(VALUE)                                               \
+  sp++;                                                                        \
+  stack[sp].obj_v = (VALUE);                                                   \
+  is_gc_object[sp] = 1;
+
 #define STACK_POP_I32(VALUE)                                                   \
   (VALUE) = stack[sp].i32_v;                                                   \
   sp--;
@@ -36,9 +41,18 @@
   (VALUE) = stack[sp].f64_v;                                                   \
   sp--;
 
+#define STACK_POP_OBJECT(VALUE)                                                \
+  (VALUE) = stack[sp].obj_v;                                                   \
+  is_gc_object[sp] = 0;                                                        \
+  sp--;
+
 #define HEAP_PUT(HEAP, GC_OBJECT)                                              \
   (GC_OBJECT)->next = (HEAP);                                                  \
   (HEAP) = (GC_OBJECT);
+
+#define READ_1BYTE(VALUE)                                                      \
+  (VALUE) = code[pc];                                                          \
+  pc++;
 
 Machine *create_machine(i32 stack_max_size) {
   Machine *machine;
@@ -76,6 +90,7 @@ void run_machine(Machine *machine) {
   /* temporary storage */
   Array *array;
   i32 length;
+  i32 offset;
 
   stack = machine->stack;
   is_gc_object = machine->is_gc_object;
@@ -87,6 +102,7 @@ void run_machine(Machine *machine) {
   machine->machine_status = MACHINE_RUNNING;
 
   length = 0;
+  offset = 0;
   array = NULL;
 
   /* printf("code length: %d\n", code_length); */
@@ -214,105 +230,171 @@ void run_machine(Machine *machine) {
       stack[sp].f64_v = -stack[sp].f64_v;
       break;
     }
-    case PUSH_ARRAY_I32: {
+    case NEW_ARRAY: {
       length = stack[sp].i32_v;
       if (length >= 0) {
         array = malloc(sizeof(Array));
         array->length = length;
-        array->u.i32_array = malloc(sizeof(i32) * length);
 
         sp++;
         stack[sp].obj_v = malloc(sizeof(GCObject));
-        stack[sp].obj_v->kind = GCOBJECT_KIND_I32_ARRAY;
         stack[sp].obj_v->u.arr_v = array;
         HEAP_PUT(machine->heap, stack[sp].obj_v);
         is_gc_object[sp] = 1;
+
+        switch (code[pc]) {
+        case TYPE_I32: {
+          array->u.i32_array = malloc(sizeof(i32) * length);
+          stack[sp].obj_v->kind = GCOBJECT_KIND_I32_ARRAY;
+          break;
+        }
+        case TYPE_I64: {
+          array->u.i64_array = malloc(sizeof(i64) * length);
+          stack[sp].obj_v->kind = GCOBJECT_KIND_I64_ARRAY;
+          break;
+        }
+        case TYPE_F32: {
+          array->u.f32_array = malloc(sizeof(f32) * length);
+          stack[sp].obj_v->kind = GCOBJECT_KIND_F32_ARRAY;
+          break;
+        }
+        case TYPE_F64: {
+          array->u.f64_array = malloc(sizeof(f64) * length);
+          stack[sp].obj_v->kind = GCOBJECT_KIND_F64_ARRAY;
+          break;
+        }
+        default: {
+          array->u.obj_array = malloc(sizeof(GCObject *) * length);
+          stack[sp].obj_v->kind = GCOBJECT_KIND_OBJ_ARRAY;
+          break;
+        }
+        }
+        pc++;
         break;
       } else {
         update_machine_state(machine, sp, fp, pc);
         machine->machine_status = RUNTIME_ERROR_ARRAY_LENGTH_LESS_THAN_ZERO;
         return;
       }
+    }
+    case PUSH_ARRAY_I32: {
+      STACK_POP_I32(offset);
+      stack[sp].i32_v = stack[sp].obj_v->u.arr_v->u.i32_array[offset];
+      is_gc_object[sp] = 0;
+      break;
     }
     case PUSH_ARRAY_I64: {
-      length = stack[sp].i32_v;
-      if (length >= 0) {
-        array = malloc(sizeof(Array));
-        array->length = length;
-        array->u.i64_array = malloc(sizeof(i64) * length);
-
-        sp++;
-        stack[sp].obj_v = malloc(sizeof(GCObject));
-        stack[sp].obj_v->kind = GCOBJECT_KIND_I64_ARRAY;
-        stack[sp].obj_v->u.arr_v = array;
-        HEAP_PUT(machine->heap, stack[sp].obj_v);
-        is_gc_object[sp] = 1;
-        break;
-      } else {
-        update_machine_state(machine, sp, fp, pc);
-        machine->machine_status = RUNTIME_ERROR_ARRAY_LENGTH_LESS_THAN_ZERO;
-        return;
-      }
+      STACK_POP_I32(offset);
+      stack[sp].i64_v = stack[sp].obj_v->u.arr_v->u.i64_array[offset];
+      is_gc_object[sp] = 0;
+      break;
     }
     case PUSH_ARRAY_F32: {
-      length = stack[sp].i32_v;
-      if (length >= 0) {
-        array = malloc(sizeof(Array));
-        array->length = length;
-        array->u.f32_array = malloc(sizeof(f32) * length);
-
-        sp++;
-        stack[sp].obj_v = malloc(sizeof(GCObject));
-        stack[sp].obj_v->kind = GCOBJECT_KIND_F32_ARRAY;
-        stack[sp].obj_v->u.arr_v = array;
-        HEAP_PUT(machine->heap, stack[sp].obj_v);
-        is_gc_object[sp] = 1;
-        break;
-      } else {
-        update_machine_state(machine, sp, fp, pc);
-        machine->machine_status = RUNTIME_ERROR_ARRAY_LENGTH_LESS_THAN_ZERO;
-        return;
-      }
+      STACK_POP_I32(offset);
+      stack[sp].f32_v = stack[sp].obj_v->u.arr_v->u.f32_array[offset];
+      is_gc_object[sp] = 0;
+      break;
     }
     case PUSH_ARRAY_F64: {
-      length = stack[sp].i32_v;
-      if (length >= 0) {
-        array = malloc(sizeof(Array));
-        array->length = length;
-        array->u.f64_array = malloc(sizeof(f64) * length);
-
-        sp++;
-        stack[sp].obj_v = malloc(sizeof(GCObject));
-        stack[sp].obj_v->kind = GCOBJECT_KIND_F64_ARRAY;
-        stack[sp].obj_v->u.arr_v = array;
-        HEAP_PUT(machine->heap, stack[sp].obj_v);
-        is_gc_object[sp] = 1;
-        break;
-      } else {
-        update_machine_state(machine, sp, fp, pc);
-        machine->machine_status = RUNTIME_ERROR_ARRAY_LENGTH_LESS_THAN_ZERO;
-        return;
-      }
+      STACK_POP_I32(offset);
+      stack[sp].f64_v = stack[sp].obj_v->u.arr_v->u.f64_array[offset];
+      is_gc_object[sp] = 0;
+      break;
     }
     case PUSH_ARRAY_OBJECT: {
-      length = stack[sp].i32_v;
-      if (length >= 0) {
-        array = malloc(sizeof(Array));
-        array->length = length;
-        array->u.obj_array = malloc(sizeof(GCObject *) * length);
-
-        sp++;
-        stack[sp].obj_v = malloc(sizeof(GCObject));
-        stack[sp].obj_v->kind = GCOBJECT_KIND_OBJ_ARRAY;
-        stack[sp].obj_v->u.arr_v = array;
-        HEAP_PUT(machine->heap, stack[sp].obj_v);
-        is_gc_object[sp] = 1;
-        break;
-      } else {
-        update_machine_state(machine, sp, fp, pc);
-        machine->machine_status = RUNTIME_ERROR_ARRAY_LENGTH_LESS_THAN_ZERO;
-        return;
-      }
+      STACK_POP_I32(offset);
+      stack[sp].obj_v = stack[sp].obj_v->u.arr_v->u.obj_array[offset];
+      break;
+    }
+    case POP_ARRAY_I32: {
+      offset = stack[sp - 1].i32_v;
+      stack[sp - 2].obj_v->u.arr_v->u.i32_array[offset] = stack[sp].i32_v;
+      is_gc_object[sp - 2] = 0;
+      sp -= 3;
+      break;
+    }
+    case POP_ARRAY_I64: {
+      offset = stack[sp - 1].i32_v;
+      stack[sp - 2].obj_v->u.arr_v->u.i64_array[offset] = stack[sp].i64_v;
+      is_gc_object[sp - 2] = 0;
+      sp -= 3;
+      break;
+    }
+    case POP_ARRAY_F32: {
+      offset = stack[sp - 1].i32_v;
+      stack[sp - 2].obj_v->u.arr_v->u.f32_array[offset] = stack[sp].f32_v;
+      is_gc_object[sp - 2] = 0;
+      sp -= 3;
+      break;
+    }
+    case POP_ARRAY_F64: {
+      offset = stack[sp - 1].i32_v;
+      stack[sp - 2].obj_v->u.arr_v->u.f64_array[offset] = stack[sp].f64_v;
+      is_gc_object[sp - 2] = 0;
+      sp -= 3;
+      break;
+    }
+    case POP_ARRAY_OBJECT: {
+      offset = stack[sp - 1].i32_v;
+      stack[sp - 2].obj_v->u.arr_v->u.obj_array[offset] = stack[sp].obj_v;
+      is_gc_object[sp] = 0;
+      is_gc_object[sp - 2] = 0;
+      sp -= 3;
+      break;
+    }
+    case CAST_I32_TO_I64: {
+      stack[sp].i64_v = stack[sp].i32_v;
+      break;
+    }
+    case PUSH_LOCAL_I32: {
+      READ_1BYTE(offset);
+      STACK_PUSH_I32(stack[fp + offset].i32_v);
+      break;
+    }
+    case PUSH_LOCAL_I64: {
+      READ_1BYTE(offset);
+      STACK_PUSH_I64(stack[fp + offset].i64_v);
+      break;
+    }
+    case PUSH_LOCAL_F32: {
+      READ_1BYTE(offset);
+      STACK_PUSH_F32(stack[fp + offset].f32_v);
+      break;
+    }
+    case PUSH_LOCAL_F64: {
+      READ_1BYTE(offset);
+      STACK_PUSH_F64(stack[fp + offset].f64_v);
+      break;
+    }
+    case PUSH_LOCAL_OBJECT: {
+      READ_1BYTE(offset);
+      STACK_PUSH_OBJECT(stack[fp + offset].obj_v);
+      break;
+    }
+    case POP_LOCAL_I32: {
+      READ_1BYTE(offset);
+      STACK_POP_I32(stack[fp + offset].i32_v);
+      break;
+    }
+    case POP_LOCAL_I64: {
+      READ_1BYTE(offset);
+      STACK_POP_I64(stack[fp + offset].i64_v);
+      break;
+    }
+    case POP_LOCAL_F32: {
+      READ_1BYTE(offset);
+      STACK_POP_F32(stack[fp + offset].f32_v);
+      break;
+    }
+    case POP_LOCAL_F64: {
+      READ_1BYTE(offset);
+      STACK_POP_F64(stack[fp + offset].f64_v);
+      break;
+    }
+    case POP_LOCAL_OBJECT: {
+      READ_1BYTE(offset);
+      STACK_POP_OBJECT(stack[fp + offset].obj_v);
+      break;
     }
     }
   }

@@ -14,6 +14,7 @@ int main(int argc, char **argv) {
   test_add();
   test_create_an_array();
   test_create_an_illegal_array();
+  test_access_array();
 
   test_results_summary();
   /*

@@ -102,6 +102,10 @@ typedef struct Function {
   /* function name */
   String *name;
 
+  i32 stack; 
+  i32 locals;
+  i32 args_size;
+
   /* function body byte code */
   i32 code_length;
   Byte *code;
