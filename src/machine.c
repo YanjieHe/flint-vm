@@ -60,7 +60,7 @@ Machine *create_machine(i32 stack_max_size) {
   machine = malloc(sizeof(Machine));
   machine->stack_max_size = stack_max_size;
   machine->stack = malloc(sizeof(Value) * stack_max_size);
-  machine->is_gc_object = malloc(sizeof(int) * stack_max_size);
+  machine->is_gc_object = malloc(sizeof(u8) * stack_max_size);
   machine->heap = NULL;
   machine->env.function = NULL;
   machine->env.module = NULL;
@@ -68,6 +68,7 @@ Machine *create_machine(i32 stack_max_size) {
   machine->fp = 0;
   machine->pc = 0;
   machine->machine_status = MACHINE_STOPPED;
+  memset(machine->is_gc_object, 0, stack_max_size);
 
   return machine;
 }
@@ -78,19 +79,16 @@ void run_machine(Machine *machine) {
   i32 code_length;
   Byte op;
   Value *stack;
-  u32 *is_gc_object;
+  u8 *is_gc_object;
   i32 sp;
   i32 fp;
   i32 pc;
-
-  /* type comparison for binary operations */
-  u32 left_type;
-  u32 right_type;
 
   /* temporary storage */
   Array *array;
   i32 length;
   i32 offset;
+  Function *callee;
 
   stack = machine->stack;
   is_gc_object = machine->is_gc_object;
@@ -346,6 +344,14 @@ void run_machine(Machine *machine) {
       stack[sp].i64_v = stack[sp].i32_v;
       break;
     }
+    case CAST_I32_TO_F32: {
+      stack[sp].f32_v = stack[sp].i32_v;
+      break;
+    }
+    case CAST_I32_TO_F64: {
+      stack[sp].f64_v = stack[sp].i32_v;
+      break;
+    }
     case PUSH_LOCAL_I32: {
       READ_1BYTE(offset);
       STACK_PUSH_I32(stack[fp + offset].i32_v);
@@ -394,6 +400,21 @@ void run_machine(Machine *machine) {
     case POP_LOCAL_OBJECT: {
       READ_1BYTE(offset);
       STACK_POP_OBJECT(stack[fp + offset].obj_v);
+      break;
+    }
+    case INVOKE_FUNCTION: {
+      READ_1BYTE(offset);
+      callee = machine->env.function->constant_pool[offset].func_v;
+      sp = sp + callee->locals;
+      sp++;
+      stack[sp].func_v = machine->env.function;
+      sp++;
+      stack[sp].i64_v = (((i64)fp) << 32) + ((i64)pc);
+      machine->env.function = callee;
+      pc = 0;
+      fp = sp - 1 - callee->locals - callee->args_size;
+      code = callee->code;
+      code_length = callee->code_length;
       break;
     }
     }

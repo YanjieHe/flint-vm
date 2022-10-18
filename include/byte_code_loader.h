@@ -26,4 +26,4 @@ void view_program(Program* program);
 void view_module(Module* module);
 void view_function(Function* function);
 
-#endif
+#endif /* FLINT_VM_BYTE_CODE_LOADER_H */

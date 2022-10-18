@@ -21,7 +21,7 @@ typedef struct Machine {
   /* stack for evaluation */
   i32 stack_max_size;
   Value *stack;
-  u32* is_gc_object;
+  u8* is_gc_object;
   GCObject* heap;
 
   /* current environment */
