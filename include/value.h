@@ -16,12 +16,15 @@ typedef double f64;
 struct String;
 struct Array;
 struct Structure;
+struct Function;
+struct Closure;
 
 typedef union {
   i32 i32_v;
   i64 i64_v;
   f32 f32_v;
   f64 f64_v;
+  struct Function *func_v;
   struct GCObject *obj_v;
 } Value;
 
@@ -102,9 +105,14 @@ typedef struct Function {
   /* function name */
   String *name;
 
-  i32 stack; 
+  /* stack space */
+  i32 stack;
   i32 locals;
   i32 args_size;
+
+  /* constant pool */
+  i32 constant_pool_size;
+  Value* constant_pool;
 
   /* function body byte code */
   i32 code_length;
@@ -141,13 +149,15 @@ typedef struct Program {
   StructureInfo *structures;
 
   /* entry */
-  u16 entry_module;
-  u16 entry_function;
+  Function* entry;
 } Program;
 
 Program *create_program(char *file_name, i32 module_count);
+void init_module(Module* module);
+String* make_string(const char* s);
 void free_string(String *str);
 char *str_to_c_str(String *str);
-void free_gc_object(GCObject* gc_object);
+void free_gc_object(GCObject *gc_object);
+void free_program(Program* program);
 
 #endif /* VALUE_H */

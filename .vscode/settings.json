@@ -1,5 +1,7 @@
 {
     "files.associations": {
-        "test_arithmetic.h": "c"
+        "test_arithmetic.h": "c",
+        "opcode.h": "c",
+        "type.h": "c"
     }
 }

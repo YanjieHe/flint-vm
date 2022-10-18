@@ -1,4 +1,5 @@
 #include "test.h"
+#include <stdlib.h>
 
 int total_tests;
 int passed_tests;
@@ -8,7 +9,8 @@ void test_results_summary() {
   printf("passed test cases: %d\n", passed_tests);
 }
 
-Program *create_program_with_single_function(Byte *code, size_t code_length) {
+Program *create_program_with_single_function(const char *name, Byte *code,
+                                             size_t code_length) {
   Program *program;
 
   program = malloc(sizeof(Program));
@@ -18,21 +20,16 @@ Program *create_program_with_single_function(Byte *code, size_t code_length) {
   program->modules = malloc(sizeof(Module));
   program->structure_count = 0;
   program->structures = NULL;
-  program->entry_module = 0;
-  program->entry_function = 0;
+  init_module(&(program->modules[0]));
   program->modules[0].function_count = 1;
   program->modules[0].functions = malloc(sizeof(Function));
-  program->modules[0].functions[0].code = code;
-  program->modules[0].functions[0].code_length = code_length;
-  program->modules[0].functions[0].name = NULL;
+  copy_byte_code(&(program->modules[0].functions[0]), code, code_length);
+  program->modules[0].functions[0].name = make_string(name);
+  program->modules[0].functions[0].constant_pool = NULL;
+  program->modules[0].functions[0].constant_pool_size = 0;
+  program->entry = &(program->modules[0].functions[0]);
 
   return program;
-}
-
-void free_program_with_single_function(Program *program) {
-  free(program->modules[0].functions);
-  free(program->modules);
-  free(program);
 }
 
 void load_program_on_machine(Program *program, Machine *machine,
@@ -40,4 +37,10 @@ void load_program_on_machine(Program *program, Machine *machine,
   machine->env.function =
       &(program->modules[main_module_id].functions[main_function_id]);
   machine->env.module = &(program->modules[main_module_id]);
+}
+
+void copy_byte_code(Function *function, Byte *code, size_t code_length) {
+  function->code = malloc(sizeof(Byte) * code_length);
+  memcpy(function->code, code, code_length);
+  function->code_length = code_length;
 }

@@ -8,8 +8,8 @@ void test_create_an_array() {
   Machine *machine;
   Byte code[] = {PUSH_I32_1BYTE, 15, NEW_ARRAY, TYPE_I32};
 
-  program =
-      create_program_with_single_function(code, sizeof(code) / sizeof(Byte));
+  program = create_program_with_single_function(__FUNCTION__, code,
+                                                sizeof(code) / sizeof(Byte));
   machine = create_machine(100);
 
   load_program_on_machine(program, machine, 0, 0);
@@ -21,7 +21,7 @@ void test_create_an_array() {
   ASSERT_EQUAL(machine->is_gc_object[machine->sp], 1);
   ASSERT_EQUAL(machine->machine_status, MACHINE_COMPLETED);
 
-  free_program_with_single_function(program);
+  free(program);
   free_machine(machine);
 }
 
@@ -30,8 +30,8 @@ void test_create_an_illegal_array() {
   Machine *machine;
   Byte code[] = {PUSH_I32_1BYTE, 5, MINUS_I32, NEW_ARRAY, TYPE_F32};
 
-  program =
-      create_program_with_single_function(code, sizeof(code) / sizeof(Byte));
+  program = create_program_with_single_function(__FUNCTION__, code,
+                                                sizeof(code) / sizeof(Byte));
   machine = create_machine(100);
 
   load_program_on_machine(program, machine, 0, 0);
@@ -42,7 +42,7 @@ void test_create_an_illegal_array() {
                RUNTIME_ERROR_ARRAY_LENGTH_LESS_THAN_ZERO);
   ASSERT_EQUAL(machine->heap, NULL);
 
-  free_program_with_single_function(program);
+  free(program);
   free_machine(machine);
 }
 
@@ -71,8 +71,8 @@ void test_access_array() {
       PUSH_ARRAY_I64,
   };
 
-  program =
-      create_program_with_single_function(code, sizeof(code) / sizeof(Byte));
+  program = create_program_with_single_function(__FUNCTION__, code,
+                                                sizeof(code) / sizeof(Byte));
   machine = create_machine(100);
 
   load_program_on_machine(program, machine, 0, 0);
@@ -90,6 +90,6 @@ void test_access_array() {
   ASSERT_EQUAL(array_obj->u.arr_v->length, 5);
   ASSERT_EQUAL(array_obj->u.arr_v->u.i64_array[3], 2905);
 
-  free_program_with_single_function(program);
+  free(program);
   free_machine(machine);
 }
