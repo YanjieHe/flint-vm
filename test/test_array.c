@@ -2,6 +2,7 @@
 #include "test.h"
 #include "opcode.h"
 #include "type.h"
+#include "byte_code_loader.h"
 
 void test_create_an_array() {
   Program *program;
@@ -70,6 +71,8 @@ void test_access_array() {
       /* push array element */
       PUSH_ARRAY_I64,
   };
+
+  view_byte_code(code, sizeof(code)/sizeof(Byte));
 
   program = create_program_with_single_function(__FUNCTION__, code,
                                                 sizeof(code) / sizeof(Byte));

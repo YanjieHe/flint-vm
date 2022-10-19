@@ -89,6 +89,7 @@ void run_machine(Machine *machine) {
   i32 length;
   i32 offset;
   Function *callee;
+  CallInfo *call_info;
 
   stack = machine->stack;
   is_gc_object = machine->is_gc_object;
@@ -404,15 +405,17 @@ void run_machine(Machine *machine) {
     }
     case INVOKE_FUNCTION: {
       READ_1BYTE(offset);
-      callee = machine->env.function->constant_pool[offset].func_v;
+      callee = machine->env.function->constant_pool[offset].u.func_v;
       sp = sp + callee->locals;
       sp++;
-      stack[sp].func_v = machine->env.function;
-      sp++;
-      stack[sp].i64_v = (((i64)fp) << 32) + ((i64)pc);
+      call_info = (CallInfo *)&(stack[sp]);
+      call_info->caller = machine->env.function;
+      call_info->caller_fp = fp;
+      call_info->caller_pc = pc;
+      sp = sp + CALL_INFO_ALIGN_SIZE;
       machine->env.function = callee;
       pc = 0;
-      fp = sp - 1 - callee->locals - callee->args_size;
+      fp = sp - CALL_INFO_ALIGN_SIZE - callee->locals - callee->args_size;
       code = callee->code;
       code_length = callee->code_length;
       break;

@@ -1,6 +1,12 @@
 #include "byte_code_loader.h"
-
 #include <stdlib.h>
+#include "opcode.h"
+
+#define TWO_BYTES_TO_U16(BYTE1, BYTE2)                                         \
+  ((((uint16_t)BYTE1) << 8) + ((uint16_t)BYTE2))
+
+#define TWO_BYTES_TO_I16(BYTE1, BYTE2)                                         \
+  ((((int16_t)BYTE1) << 8) + ((int16_t)BYTE2))
 
 /*
 * @brief create a byte code loader
@@ -49,15 +55,18 @@ u16 read_u16(ByteCodeLoader *loader) {
     result = (u16)peek;
     peek = fgetc(loader->file);
     if (peek != EOF) {
-      result = (result << 8) + ((u16)peek);
+      result = TWO_BYTES_TO_U16(result, peek);
+
       return result;
     } else {
       utarray_push_back(loader->error_messages,
                         "error occurs when reading u16");
+
       return 0;
     }
   } else {
     utarray_push_back(loader->error_messages, "error occurs when reading u16");
+
     return 0;
   }
 }
@@ -291,4 +300,32 @@ void view_function(Function *function) {
   }
   printf(" }");
   printf("\n");
+}
+
+void view_byte_code(Byte *code, size_t code_length) {
+  size_t i;
+  Byte op;
+  const char *op_name;
+
+  i = 0;
+  while (i < code_length) {
+    op = code[i];
+    op_name = opcode_info[op][0];
+    printf("%ld: ", i);
+    if (strcmp(opcode_info[op][1], "") == 0) {
+      printf("%s\n", op_name);
+      i++;
+    } else if (strcmp(opcode_info[op][1], "b") == 0) {
+      printf("%s  %d\n", op_name, code[i + 1]);
+      i += 2;
+    } else if (strcmp(opcode_info[op][1], "u") == 0) {
+      printf("%s  %d\n", op_name, TWO_BYTES_TO_U16(code[i + 1], code[i + 2]));
+      i += 3;
+    } else if (strcmp(opcode_info[op][1], "s") == 0) {
+      printf("%s  %d\n", op_name, TWO_BYTES_TO_I16(code[i + 1], code[i + 2]));
+      i += 3;
+    } else {
+      /* error */
+    }
+  }
 }

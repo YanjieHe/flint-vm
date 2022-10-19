@@ -25,5 +25,6 @@ Program *read_byte_code_file(ByteCodeLoader *loader);
 void view_program(Program* program);
 void view_module(Module* module);
 void view_function(Function* function);
+void view_byte_code(Byte* code, size_t code_length);
 
 #endif /* FLINT_VM_BYTE_CODE_LOADER_H */

@@ -6,12 +6,15 @@
 
 typedef uint8_t u8;
 typedef uint8_t Byte;
+typedef int16_t i16;
 typedef uint16_t u16;
 typedef int32_t i32;
 typedef uint32_t u32;
 typedef int64_t i64;
 typedef float f32;
 typedef double f64;
+#define TRUE 1
+#define FALSE 0
 
 struct String;
 struct Array;
@@ -24,7 +27,6 @@ typedef union {
   i64 i64_v;
   f32 f32_v;
   f64 f64_v;
-  struct Function *func_v;
   struct GCObject *obj_v;
 } Value;
 
@@ -65,6 +67,19 @@ typedef struct Array {
     GCObject **obj_array;
   } u;
 } Array;
+
+typedef struct Constant {
+  i32 type;
+  union {
+    i32 i32_v;
+    i64 i64_v;
+    f32 f32_v;
+    f64 f64_v;
+    struct Function *func_v;
+    struct GCObject *obj_v;
+  } u;
+  i32 is_initialized;
+} Constant;
 
 typedef struct FieldInfo {
   char *name;
@@ -112,12 +127,22 @@ typedef struct Function {
 
   /* constant pool */
   i32 constant_pool_size;
-  Value* constant_pool;
+  Constant *constant_pool;
 
   /* function body byte code */
   i32 code_length;
   Byte *code;
 } Function;
+
+typedef struct CallInfo {
+  Function *caller;
+  i32 caller_pc;
+  i32 caller_fp;
+} CallInfo;
+
+#define CALL_INFO_ALIGN_SIZE                                                   \
+  ((sizeof(CallInfo) / sizeof(Value)) +                                        \
+   ((sizeof(CallInfo) % sizeof(Value)) ? 1 : 0))
 
 typedef struct Module {
   /* module name */
@@ -125,7 +150,7 @@ typedef struct Module {
 
   /* constant pool */
   i32 constant_pool_size;
-  Value *constant_pool;
+  Constant *constant_pool;
 
   /* functions */
   i32 function_count;
@@ -149,15 +174,15 @@ typedef struct Program {
   StructureInfo *structures;
 
   /* entry */
-  Function* entry;
+  Function *entry;
 } Program;
 
 Program *create_program(char *file_name, i32 module_count);
-void init_module(Module* module);
-String* make_string(const char* s);
+void init_module(Module *module);
+String *make_string(const char *s);
 void free_string(String *str);
 char *str_to_c_str(String *str);
 void free_gc_object(GCObject *gc_object);
-void free_program(Program* program);
+void free_program(Program *program);
 
 #endif /* VALUE_H */

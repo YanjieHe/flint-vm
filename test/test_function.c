@@ -45,7 +45,7 @@ void test_function_invocation() {
   callee->constant_pool = NULL;
 
   /* update constant pool function reference */
-  caller->constant_pool[0].func_v = callee;
+  caller->constant_pool[0].u.func_v = callee;
 
   program->entry = caller;
 
