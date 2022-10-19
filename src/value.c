@@ -98,4 +98,5 @@ void free_program(Program *program) {
     free(module->functions);
   }
   free(program->modules);
+  free(program);
 }

@@ -54,6 +54,14 @@
   (VALUE) = code[pc];                                                          \
   pc++;
 
+#define READ_1BYTE_I8(VALUE)                                                   \
+  (VALUE) = (i8)code[pc];                                                      \
+  pc++;
+
+#define READ_2BYTES_I16(VALUE)                                                 \
+  (VALUE) = ((i16)((((u16)code[pc]) << 8) + ((u16)(code[pc + 1]))));           \
+  pc += 2;
+
 Machine *create_machine(i32 stack_max_size) {
   Machine *machine;
 
@@ -90,6 +98,7 @@ void run_machine(Machine *machine) {
   i32 offset;
   Function *callee;
   CallInfo *call_info;
+  i32 boolean_value;
 
   stack = machine->stack;
   is_gc_object = machine->is_gc_object;
@@ -123,14 +132,12 @@ void run_machine(Machine *machine) {
     }
     case PUSH_I32_1BYTE: {
       sp++;
-      stack[sp].i32_v = code[pc];
-      pc++;
+      READ_1BYTE_I8(stack[sp].i32_v);
       break;
     }
     case PUSH_I32_2BYTES: {
       sp++;
-      stack[sp].i32_v = (code[pc] << 8) + (code[pc + 1]);
-      pc = pc + 2;
+      READ_2BYTES_I16(stack[sp].i32_v);
       break;
     }
     case ADD_I32: {
@@ -418,6 +425,31 @@ void run_machine(Machine *machine) {
       fp = sp - CALL_INFO_ALIGN_SIZE - callee->locals - callee->args_size;
       code = callee->code;
       code_length = callee->code_length;
+      break;
+    }
+    case JUMP: {
+      READ_2BYTES_I16(offset);
+      pc += offset;
+      break;
+    }
+    case JUMP_IF_TRUE: {
+      STACK_POP_I32(boolean_value);
+      if (boolean_value) {
+        READ_2BYTES_I16(offset);
+        pc += offset;
+      } else {
+        pc += 2;
+      }
+      break;
+    }
+    case JUMP_IF_FALSE: {
+      STACK_POP_I32(boolean_value);
+      if (boolean_value) {
+        pc += 2;
+      } else {
+        READ_2BYTES_I16(offset);
+        pc += offset;
+      }
       break;
     }
     }

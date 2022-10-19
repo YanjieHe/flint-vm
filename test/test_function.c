@@ -23,6 +23,7 @@ void test_function_invocation() {
   program->modules = malloc(sizeof(Module));
   program->structure_count = 0;
   program->structures = NULL;
+  init_module(&(program->modules[0]));
   program->modules[0].function_count = 2;
   program->modules[0].functions =
       malloc(sizeof(Function) * program->modules[0].function_count);
@@ -33,7 +34,7 @@ void test_function_invocation() {
   caller->name = make_string("caller");
   caller->constant_pool_size = 1;
   caller->constant_pool = malloc(
-      sizeof(Value) * program->modules[0].functions[0].constant_pool_size);
+      sizeof(Constant) * program->modules[0].functions[0].constant_pool_size);
 
   /* callee function */
   callee = &(program->modules[0].functions[1]);
