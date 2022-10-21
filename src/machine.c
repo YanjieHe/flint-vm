@@ -452,6 +452,35 @@ void run_machine(Machine *machine) {
       }
       break;
     }
+    case PUSH_FIELD_I32: {
+      READ_1BYTE(offset);
+      stack[sp].i32_v = stack[sp].obj_v->u.struct_v->values[offset].i32_v;
+      is_gc_object[sp] = FALSE;
+      break;
+    }
+    case PUSH_FIELD_I64: {
+      READ_1BYTE(offset);
+      stack[sp].i64_v = stack[sp].obj_v->u.struct_v->values[offset].i64_v;
+      is_gc_object[sp] = FALSE;
+      break;
+    }
+    case PUSH_FIELD_F32: {
+      READ_1BYTE(offset);
+      stack[sp].f32_v = stack[sp].obj_v->u.struct_v->values[offset].f32_v;
+      is_gc_object[sp] = FALSE;
+      break;
+    }
+    case PUSH_FIELD_F64: {
+      READ_1BYTE(offset);
+      stack[sp].f64_v = stack[sp].obj_v->u.struct_v->values[offset].f64_v;
+      is_gc_object[sp] = FALSE;
+      break;
+    }
+    case PUSH_FIELD_OBJECT: {
+      READ_1BYTE(offset);
+      stack[sp].obj_v = stack[sp].obj_v->u.struct_v->values[offset].obj_v;
+      break;
+    }
     }
   }
 

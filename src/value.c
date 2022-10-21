@@ -35,7 +35,7 @@ String *make_string(const char *s) {
   str = malloc(sizeof(String));
   str->length = strlen(s);
   str->characters = malloc(sizeof(char) * str->length);
-  memcpy(str->characters, s, str->length);
+  strncpy(str->characters, s, str->length);
 
   return str;
 }

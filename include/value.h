@@ -117,6 +117,13 @@ typedef struct Method {
   Byte *code;
 } Method;
 
+typedef struct Closure { Value *up_values; } Closure;
+
+typedef struct NativeFunction {
+  char *lib_name;
+  char *func_name;
+} NativeFunction;
+
 typedef struct Function {
   /* function name */
   String *name;
