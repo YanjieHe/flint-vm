@@ -4,6 +4,7 @@
 #include "uthash.h"
 #include <stdint.h>
 
+typedef int8_t i8;
 typedef uint8_t u8;
 typedef uint8_t Byte;
 typedef int16_t i16;

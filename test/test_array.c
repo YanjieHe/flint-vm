@@ -22,7 +22,7 @@ void test_create_an_array() {
   ASSERT_EQUAL(machine->is_gc_object[machine->sp], 1);
   ASSERT_EQUAL(machine->machine_status, MACHINE_COMPLETED);
 
-  free(program);
+  free_program(program);
   free_machine(machine);
 }
 
@@ -43,7 +43,7 @@ void test_create_an_illegal_array() {
                RUNTIME_ERROR_ARRAY_LENGTH_LESS_THAN_ZERO);
   ASSERT_EQUAL(machine->heap, NULL);
 
-  free(program);
+  free_program(program);
   free_machine(machine);
 }
 
@@ -72,8 +72,6 @@ void test_access_array() {
       PUSH_ARRAY_I64,
   };
 
-  view_byte_code(code, sizeof(code)/sizeof(Byte));
-
   program = create_program_with_single_function(__FUNCTION__, code,
                                                 sizeof(code) / sizeof(Byte));
   machine = create_machine(100);
@@ -93,6 +91,6 @@ void test_access_array() {
   ASSERT_EQUAL(array_obj->u.arr_v->length, 5);
   ASSERT_EQUAL(array_obj->u.arr_v->u.i64_array[3], 2905);
 
-  free(program);
+  free_program(program);
   free_machine(machine);
 }
