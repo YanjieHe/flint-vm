@@ -124,7 +124,7 @@ void run_machine(Machine *machine) {
 
     op = code[pc];
     pc++;
-    /*printf("op = %s\n", opcode_info[op][0]);*/
+    /* printf("op = %s\n", opcode_info[op][0]); */
 
     switch (op) {
     case PUSH_I32_0: {
@@ -383,6 +383,42 @@ void run_machine(Machine *machine) {
     }
     case CAST_I32_TO_F64: {
       stack[sp].f64_v = stack[sp].i32_v;
+      break;
+    }
+    case CAST_I64_TO_I32: {
+      stack[sp].i32_v = stack[sp].i64_v;
+      break;
+    }
+    case CAST_I64_TO_F32: {
+      stack[sp].f32_v = stack[sp].i64_v;
+      break;
+    }
+    case CAST_I64_TO_F64: {
+      stack[sp].f64_v = stack[sp].i64_v;
+      break;
+    }
+    case CAST_F32_TO_I32: {
+      stack[sp].i32_v = stack[sp].f32_v;
+      break;
+    }
+    case CAST_F32_TO_I64: {
+      stack[sp].i64_v = stack[sp].f32_v;
+      break;
+    }
+    case CAST_F32_TO_F64: {
+      stack[sp].f64_v = stack[sp].f32_v;
+      break;
+    }
+    case CAST_F64_TO_I32: {
+      stack[sp].i32_v = stack[sp].f64_v;
+      break;
+    }
+    case CAST_F64_TO_I64: {
+      stack[sp].i64_v = stack[sp].f64_v;
+      break;
+    }
+    case CAST_F64_TO_F32: {
+      stack[sp].f32_v = stack[sp].f64_v;
       break;
     }
     case PUSH_LOCAL_I32: {
