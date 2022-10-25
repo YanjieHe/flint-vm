@@ -74,7 +74,7 @@ void free_gc_object(GCObject *gc_object) {
     free(gc_object->u.arr_v->u.obj_array);
     free(gc_object->u.arr_v);
   } else {
-    /* TO DO: free structure */
+    free(gc_object->u.struct_v->values);
   }
   free(gc_object);
 }

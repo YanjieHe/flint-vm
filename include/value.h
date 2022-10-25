@@ -22,6 +22,7 @@ struct Array;
 struct Structure;
 struct Function;
 struct Closure;
+struct StructureMetaData;
 
 typedef union {
   i32 i32_v;
@@ -77,6 +78,7 @@ typedef struct Constant {
     f32 f32_v;
     f64 f64_v;
     struct Function *func_v;
+    struct StructureMetaData* struct_meta_data;
     struct GCObject *obj_v;
   } u;
   i32 is_initialized;
@@ -94,15 +96,15 @@ typedef struct FieldIndex {
   UT_hash_handle hh;
 } FieldIndex;
 
-typedef struct StructureInfo {
+typedef struct StructureMetaData {
   String *name;
   FieldIndex *fields_map;
   FieldInfo *fields_arr;
-} StructureInfo;
+  u16 n_values;
+} StructureMetaData;
 
 typedef struct Structure {
-  StructureInfo *info;
-  u16 n_values;
+  StructureMetaData *meta_data;
   Value *values;
 } Structure;
 
@@ -179,7 +181,7 @@ typedef struct Program {
 
   /* structures */
   i32 structure_count;
-  StructureInfo *structures;
+  StructureMetaData *structures_meta_data;
 
   /* entry */
   Function *entry;

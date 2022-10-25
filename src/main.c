@@ -5,6 +5,7 @@
 #include "test_array.h"
 #include "test_function.h"
 #include "test_jump.h"
+#include "test_structure.h"
 
 
 #define STACK_MAX_SIZE 10000
@@ -22,6 +23,8 @@ int main(int argc, char **argv) {
   test_function_invocation();
 
   test_jump();
+
+  test_structure();
 
   test_results_summary();
   /*

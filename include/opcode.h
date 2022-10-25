@@ -290,7 +290,7 @@ static const char* opcode_info [][2] = {
 	{ "RETURN_F32", "" },
 	{ "RETURN_F64", "" },
 	{ "RETURN_OBJECT", "" },
-	{ "NEW", "u" },
+	{ "NEW", "b" },
 	{ "NEW_ARRAY", "b" },
 	{ "NEW_ARRAY_LITERAL_I32", "u" },
 	{ "NEW_ARRAY_LITERAL_I64", "u" },

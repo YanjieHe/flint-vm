@@ -19,7 +19,7 @@ Program *create_program_with_single_function(const char *name, Byte *code,
   program->module_count = 1;
   program->modules = malloc(sizeof(Module));
   program->structure_count = 0;
-  program->structures = NULL;
+  program->structures_meta_data = NULL;
   init_module(&(program->modules[0]));
   program->modules[0].function_count = 1;
   program->modules[0].functions = malloc(sizeof(Function));
