@@ -35,7 +35,7 @@ String *make_string(const char *s) {
   str = malloc(sizeof(String));
   str->length = strlen(s);
   str->characters = malloc(sizeof(char) * str->length);
-  memcpy(str->characters, s, str->length);
+  strncpy(str->characters, s, str->length);
 
   return str;
 }
@@ -74,7 +74,7 @@ void free_gc_object(GCObject *gc_object) {
     free(gc_object->u.arr_v->u.obj_array);
     free(gc_object->u.arr_v);
   } else {
-    /* TO DO: free structure */
+    free(gc_object->u.struct_v->values);
   }
   free(gc_object);
 }

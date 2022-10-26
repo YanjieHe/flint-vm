@@ -99,6 +99,7 @@ void run_machine(Machine *machine) {
   Function *callee;
   CallInfo *call_info;
   i32 boolean_value;
+  Structure *structure;
 
   stack = machine->stack;
   is_gc_object = machine->is_gc_object;
@@ -109,9 +110,13 @@ void run_machine(Machine *machine) {
   pc = machine->pc;
   machine->machine_status = MACHINE_RUNNING;
 
+  array = NULL;
   length = 0;
   offset = 0;
-  array = NULL;
+  callee = NULL;
+  call_info = NULL;
+  boolean_value = FALSE;
+  structure = NULL;
 
   /* printf("code length: %d\n", code_length); */
 
@@ -138,6 +143,31 @@ void run_machine(Machine *machine) {
     case PUSH_I32_2BYTES: {
       sp++;
       READ_2BYTES_I16(stack[sp].i32_v);
+      break;
+    }
+    case PUSH_I32: {
+      READ_1BYTE(offset);
+      STACK_PUSH_I32(machine->env.function->constant_pool[offset].u.i32_v);
+      break;
+    }
+    case PUSH_I64: {
+      READ_1BYTE(offset);
+      STACK_PUSH_I64(machine->env.function->constant_pool[offset].u.i64_v);
+      break;
+    }
+    case PUSH_F32: {
+      READ_1BYTE(offset);
+      STACK_PUSH_F32(machine->env.function->constant_pool[offset].u.f32_v);
+      break;
+    }
+    case PUSH_F64: {
+      READ_1BYTE(offset);
+      STACK_PUSH_F64(machine->env.function->constant_pool[offset].u.f64_v);
+      break;
+    }
+    case PUSH_STRING:{
+      READ_1BYTE(offset);
+      STACK_PUSH_OBJECT(machine->env.function->constant_pool[offset].u.obj_v);
       break;
     }
     case ADD_I32: {
@@ -234,6 +264,102 @@ void run_machine(Machine *machine) {
     }
     case MINUS_F64: {
       stack[sp].f64_v = -stack[sp].f64_v;
+      break;
+    }
+    case EQ_I32: {
+      stack[sp - 1].i32_v = (stack[sp - 1].i32_v == stack[sp].i32_v);
+      break;
+    }
+    case NE_I32: {
+      stack[sp - 1].i32_v = (stack[sp - 1].i32_v != stack[sp].i32_v);
+      break;
+    }
+    case GT_I32: {
+      stack[sp - 1].i32_v = (stack[sp - 1].i32_v > stack[sp].i32_v);
+      break;
+    }
+    case LT_I32: {
+      stack[sp - 1].i32_v = (stack[sp - 1].i32_v < stack[sp].i32_v);
+      break;
+    }
+    case GE_I32: {
+      stack[sp - 1].i32_v = (stack[sp - 1].i32_v >= stack[sp].i32_v);
+      break;
+    }
+    case LE_I32: {
+      stack[sp - 1].i32_v = (stack[sp - 1].i32_v <= stack[sp].i32_v);
+      break;
+    }
+    case EQ_I64: {
+      stack[sp - 1].i32_v = (stack[sp - 1].i64_v == stack[sp].i64_v);
+      break;
+    }
+    case NE_I64: {
+      stack[sp - 1].i32_v = (stack[sp - 1].i64_v != stack[sp].i64_v);
+      break;
+    }
+    case GT_I64: {
+      stack[sp - 1].i32_v = (stack[sp - 1].i64_v > stack[sp].i64_v);
+      break;
+    }
+    case LT_I64: {
+      stack[sp - 1].i32_v = (stack[sp - 1].i64_v < stack[sp].i64_v);
+      break;
+    }
+    case GE_I64: {
+      stack[sp - 1].i32_v = (stack[sp - 1].i64_v >= stack[sp].i64_v);
+      break;
+    }
+    case LE_I64: {
+      stack[sp - 1].i32_v = (stack[sp - 1].i64_v <= stack[sp].i64_v);
+      break;
+    }
+    case EQ_F32: {
+      stack[sp - 1].i32_v = (stack[sp - 1].f32_v == stack[sp].f32_v);
+      break;
+    }
+    case NE_F32: {
+      stack[sp - 1].i32_v = (stack[sp - 1].f32_v != stack[sp].f32_v);
+      break;
+    }
+    case GT_F32: {
+      stack[sp - 1].i32_v = (stack[sp - 1].f32_v > stack[sp].f32_v);
+      break;
+    }
+    case LT_F32: {
+      stack[sp - 1].i32_v = (stack[sp - 1].f32_v < stack[sp].f32_v);
+      break;
+    }
+    case GE_F32: {
+      stack[sp - 1].i32_v = (stack[sp - 1].f32_v >= stack[sp].f32_v);
+      break;
+    }
+    case LE_F32: {
+      stack[sp - 1].i32_v = (stack[sp - 1].f32_v <= stack[sp].f32_v);
+      break;
+    }
+    case EQ_F64: {
+      stack[sp - 1].i32_v = (stack[sp - 1].f64_v == stack[sp].f64_v);
+      break;
+    }
+    case NE_F64: {
+      stack[sp - 1].i32_v = (stack[sp - 1].f64_v != stack[sp].f64_v);
+      break;
+    }
+    case GT_F64: {
+      stack[sp - 1].i32_v = (stack[sp - 1].f64_v > stack[sp].f64_v);
+      break;
+    }
+    case LT_F64: {
+      stack[sp - 1].i32_v = (stack[sp - 1].f64_v < stack[sp].f64_v);
+      break;
+    }
+    case GE_F64: {
+      stack[sp - 1].i32_v = (stack[sp - 1].f64_v >= stack[sp].f64_v);
+      break;
+    }
+    case LE_F64: {
+      stack[sp - 1].i32_v = (stack[sp - 1].f64_v <= stack[sp].f64_v);
       break;
     }
     case NEW_ARRAY: {
@@ -360,6 +486,42 @@ void run_machine(Machine *machine) {
       stack[sp].f64_v = stack[sp].i32_v;
       break;
     }
+    case CAST_I64_TO_I32: {
+      stack[sp].i32_v = stack[sp].i64_v;
+      break;
+    }
+    case CAST_I64_TO_F32: {
+      stack[sp].f32_v = stack[sp].i64_v;
+      break;
+    }
+    case CAST_I64_TO_F64: {
+      stack[sp].f64_v = stack[sp].i64_v;
+      break;
+    }
+    case CAST_F32_TO_I32: {
+      stack[sp].i32_v = stack[sp].f32_v;
+      break;
+    }
+    case CAST_F32_TO_I64: {
+      stack[sp].i64_v = stack[sp].f32_v;
+      break;
+    }
+    case CAST_F32_TO_F64: {
+      stack[sp].f64_v = stack[sp].f32_v;
+      break;
+    }
+    case CAST_F64_TO_I32: {
+      stack[sp].i32_v = stack[sp].f64_v;
+      break;
+    }
+    case CAST_F64_TO_I64: {
+      stack[sp].i64_v = stack[sp].f64_v;
+      break;
+    }
+    case CAST_F64_TO_F32: {
+      stack[sp].f32_v = stack[sp].f64_v;
+      break;
+    }
     case PUSH_LOCAL_I32: {
       READ_1BYTE(offset);
       STACK_PUSH_I32(stack[fp + offset].i32_v);
@@ -450,6 +612,92 @@ void run_machine(Machine *machine) {
         READ_2BYTES_I16(offset);
         pc += offset;
       }
+      break;
+    }
+    case NEW: {
+      READ_1BYTE(offset);
+      structure = malloc(sizeof(Structure));
+      structure->meta_data =
+          machine->env.function->constant_pool[offset].u.struct_meta_data;
+      structure->values =
+          malloc(sizeof(Value) * structure->meta_data->n_values);
+      sp++;
+      stack[sp].obj_v = malloc(sizeof(GCObject));
+      stack[sp].obj_v->kind = GCOBJECT_KIND_OBJECT;
+      stack[sp].obj_v->u.struct_v = structure;
+      HEAP_PUT(machine->heap, stack[sp].obj_v);
+      is_gc_object[sp] = TRUE;
+      break;
+    }
+    case PUSH_FIELD_I32: {
+      READ_1BYTE(offset);
+      stack[sp].i32_v = stack[sp].obj_v->u.struct_v->values[offset].i32_v;
+      is_gc_object[sp] = FALSE;
+      break;
+    }
+    case PUSH_FIELD_I64: {
+      READ_1BYTE(offset);
+      stack[sp].i64_v = stack[sp].obj_v->u.struct_v->values[offset].i64_v;
+      is_gc_object[sp] = FALSE;
+      break;
+    }
+    case PUSH_FIELD_F32: {
+      READ_1BYTE(offset);
+      stack[sp].f32_v = stack[sp].obj_v->u.struct_v->values[offset].f32_v;
+      is_gc_object[sp] = FALSE;
+      break;
+    }
+    case PUSH_FIELD_F64: {
+      READ_1BYTE(offset);
+      stack[sp].f64_v = stack[sp].obj_v->u.struct_v->values[offset].f64_v;
+      is_gc_object[sp] = FALSE;
+      break;
+    }
+    case PUSH_FIELD_OBJECT: {
+      READ_1BYTE(offset);
+      stack[sp].obj_v = stack[sp].obj_v->u.struct_v->values[offset].obj_v;
+      break;
+    }
+    case POP_FIELD_I32: {
+      READ_1BYTE(offset);
+      stack[sp - 1].obj_v->u.struct_v->values[offset].i32_v = stack[sp].i32_v;
+      is_gc_object[sp - 1] = FALSE;
+      sp = sp - 2;
+      break;
+    }
+    case POP_FIELD_I64: {
+      READ_1BYTE(offset);
+      stack[sp - 1].obj_v->u.struct_v->values[offset].i64_v = stack[sp].i64_v;
+      is_gc_object[sp - 1] = FALSE;
+      sp = sp - 2;
+      break;
+    }
+    case POP_FIELD_F32: {
+      READ_1BYTE(offset);
+      stack[sp - 1].obj_v->u.struct_v->values[offset].f32_v = stack[sp].f32_v;
+      is_gc_object[sp - 1] = FALSE;
+      sp = sp - 2;
+      break;
+    }
+    case POP_FIELD_F64: {
+      READ_1BYTE(offset);
+      stack[sp - 1].obj_v->u.struct_v->values[offset].f64_v = stack[sp].f64_v;
+      is_gc_object[sp - 1] = FALSE;
+      sp = sp - 2;
+      break;
+    }
+    case POP_FIELD_OBJECT: {
+      READ_1BYTE(offset);
+      stack[sp - 1].obj_v->u.struct_v->values[offset].obj_v = stack[sp].obj_v;
+      is_gc_object[sp - 1] = FALSE;
+      is_gc_object[sp] = FALSE;
+      sp = sp - 2;
+      break;
+    }
+    case DUPLICATE: {
+      sp++;
+      stack[sp].obj_v = stack[sp - 1].obj_v;
+      is_gc_object[sp] = is_gc_object[sp - 1];
       break;
     }
     }

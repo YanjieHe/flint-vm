@@ -22,7 +22,7 @@ void test_function_invocation() {
   program->module_count = 1;
   program->modules = malloc(sizeof(Module));
   program->structure_count = 0;
-  program->structures = NULL;
+  program->structures_meta_data = NULL;
   init_module(&(program->modules[0]));
   program->modules[0].function_count = 2;
   program->modules[0].functions =

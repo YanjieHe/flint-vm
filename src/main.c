@@ -4,6 +4,8 @@
 #include "test_arithmetic.h"
 #include "test_array.h"
 #include "test_function.h"
+#include "test_jump.h"
+#include "test_structure.h"
 
 
 #define STACK_MAX_SIZE 10000
@@ -19,6 +21,11 @@ int main(int argc, char **argv) {
   test_access_array();
 
   test_function_invocation();
+
+  test_jump();
+
+  test_structure();
+  test_structure_get_field_value();
 
   test_results_summary();
   /*
