@@ -11,7 +11,6 @@ typedef struct Environment {
 enum MachineStatus {
   MACHINE_STOPPED,
   MACHINE_RUNNING,
-  MACHINE_COMPLETED,
 
   /* runtime errors */
   RUNTIME_ERROR_ARRAY_LENGTH_LESS_THAN_ZERO

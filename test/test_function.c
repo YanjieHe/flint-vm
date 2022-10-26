@@ -12,7 +12,7 @@ void test_function_invocation() {
                         PUSH_I32_1BYTE, 35, CAST_I32_TO_F32,
                         /* invoke function */
                         INVOKE_FUNCTION, 0};
-  Byte callee_code[] = {PUSH_LOCAL_F32, 0, PUSH_LOCAL_F32, 1, MUL_F32};
+  Byte callee_code[] = {PUSH_LOCAL_F32, 0, PUSH_LOCAL_F32, 1, MUL_F32, HALT};
   Function *caller;
   Function *callee;
 

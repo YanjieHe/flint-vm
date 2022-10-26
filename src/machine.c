@@ -84,7 +84,6 @@ Machine *create_machine(i32 stack_max_size) {
 void run_machine(Machine *machine) {
   /* state */
   Byte *code;
-  i32 code_length;
   Byte op;
   Value *stack;
   u8 *is_gc_object;
@@ -104,7 +103,6 @@ void run_machine(Machine *machine) {
   stack = machine->stack;
   is_gc_object = machine->is_gc_object;
   code = machine->env.function->code;
-  code_length = machine->env.function->code_length;
   sp = machine->sp;
   fp = machine->fp;
   pc = machine->pc;
@@ -120,13 +118,18 @@ void run_machine(Machine *machine) {
 
   /* printf("code length: %d\n", code_length); */
 
-  while (pc < code_length) {
+  while (1) {
 
     op = code[pc];
     pc++;
     /* printf("op = %s\n", opcode_info[op][0]); */
 
     switch (op) {
+    case HALT: {
+      update_machine_state(machine, sp, fp, pc);
+      machine->machine_status = MACHINE_STOPPED;
+      return;
+    }
     case PUSH_I32_0: {
       STACK_PUSH_I32(0);
       break;
@@ -165,7 +168,7 @@ void run_machine(Machine *machine) {
       STACK_PUSH_F64(machine->env.function->constant_pool[offset].u.f64_v);
       break;
     }
-    case PUSH_STRING:{
+    case PUSH_STRING: {
       READ_1BYTE(offset);
       STACK_PUSH_OBJECT(machine->env.function->constant_pool[offset].u.obj_v);
       break;
@@ -586,7 +589,6 @@ void run_machine(Machine *machine) {
       pc = 0;
       fp = sp - CALL_INFO_ALIGN_SIZE - callee->locals - callee->args_size;
       code = callee->code;
-      code_length = callee->code_length;
       break;
     }
     case JUMP: {
@@ -702,9 +704,6 @@ void run_machine(Machine *machine) {
     }
     }
   }
-
-  update_machine_state(machine, sp, fp, pc);
-  machine->machine_status = MACHINE_COMPLETED;
 }
 
 void update_machine_state(Machine *machine, i32 sp, i32 fp, i32 pc) {
