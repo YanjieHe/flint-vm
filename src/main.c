@@ -25,6 +25,7 @@ int main(int argc, char **argv) {
   test_jump();
 
   test_structure();
+  test_structure_get_field_value();
 
   test_results_summary();
   /*

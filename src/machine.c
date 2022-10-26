@@ -165,6 +165,11 @@ void run_machine(Machine *machine) {
       STACK_PUSH_F64(machine->env.function->constant_pool[offset].u.f64_v);
       break;
     }
+    case PUSH_STRING:{
+      READ_1BYTE(offset);
+      STACK_PUSH_OBJECT(machine->env.function->constant_pool[offset].u.obj_v);
+      break;
+    }
     case ADD_I32: {
       stack[sp - 1].i32_v = (stack[sp - 1].i32_v + stack[sp].i32_v);
       sp--;
@@ -259,6 +264,102 @@ void run_machine(Machine *machine) {
     }
     case MINUS_F64: {
       stack[sp].f64_v = -stack[sp].f64_v;
+      break;
+    }
+    case EQ_I32: {
+      stack[sp - 1].i32_v = (stack[sp - 1].i32_v == stack[sp].i32_v);
+      break;
+    }
+    case NE_I32: {
+      stack[sp - 1].i32_v = (stack[sp - 1].i32_v != stack[sp].i32_v);
+      break;
+    }
+    case GT_I32: {
+      stack[sp - 1].i32_v = (stack[sp - 1].i32_v > stack[sp].i32_v);
+      break;
+    }
+    case LT_I32: {
+      stack[sp - 1].i32_v = (stack[sp - 1].i32_v < stack[sp].i32_v);
+      break;
+    }
+    case GE_I32: {
+      stack[sp - 1].i32_v = (stack[sp - 1].i32_v >= stack[sp].i32_v);
+      break;
+    }
+    case LE_I32: {
+      stack[sp - 1].i32_v = (stack[sp - 1].i32_v <= stack[sp].i32_v);
+      break;
+    }
+    case EQ_I64: {
+      stack[sp - 1].i32_v = (stack[sp - 1].i64_v == stack[sp].i64_v);
+      break;
+    }
+    case NE_I64: {
+      stack[sp - 1].i32_v = (stack[sp - 1].i64_v != stack[sp].i64_v);
+      break;
+    }
+    case GT_I64: {
+      stack[sp - 1].i32_v = (stack[sp - 1].i64_v > stack[sp].i64_v);
+      break;
+    }
+    case LT_I64: {
+      stack[sp - 1].i32_v = (stack[sp - 1].i64_v < stack[sp].i64_v);
+      break;
+    }
+    case GE_I64: {
+      stack[sp - 1].i32_v = (stack[sp - 1].i64_v >= stack[sp].i64_v);
+      break;
+    }
+    case LE_I64: {
+      stack[sp - 1].i32_v = (stack[sp - 1].i64_v <= stack[sp].i64_v);
+      break;
+    }
+    case EQ_F32: {
+      stack[sp - 1].i32_v = (stack[sp - 1].f32_v == stack[sp].f32_v);
+      break;
+    }
+    case NE_F32: {
+      stack[sp - 1].i32_v = (stack[sp - 1].f32_v != stack[sp].f32_v);
+      break;
+    }
+    case GT_F32: {
+      stack[sp - 1].i32_v = (stack[sp - 1].f32_v > stack[sp].f32_v);
+      break;
+    }
+    case LT_F32: {
+      stack[sp - 1].i32_v = (stack[sp - 1].f32_v < stack[sp].f32_v);
+      break;
+    }
+    case GE_F32: {
+      stack[sp - 1].i32_v = (stack[sp - 1].f32_v >= stack[sp].f32_v);
+      break;
+    }
+    case LE_F32: {
+      stack[sp - 1].i32_v = (stack[sp - 1].f32_v <= stack[sp].f32_v);
+      break;
+    }
+    case EQ_F64: {
+      stack[sp - 1].i32_v = (stack[sp - 1].f64_v == stack[sp].f64_v);
+      break;
+    }
+    case NE_F64: {
+      stack[sp - 1].i32_v = (stack[sp - 1].f64_v != stack[sp].f64_v);
+      break;
+    }
+    case GT_F64: {
+      stack[sp - 1].i32_v = (stack[sp - 1].f64_v > stack[sp].f64_v);
+      break;
+    }
+    case LT_F64: {
+      stack[sp - 1].i32_v = (stack[sp - 1].f64_v < stack[sp].f64_v);
+      break;
+    }
+    case GE_F64: {
+      stack[sp - 1].i32_v = (stack[sp - 1].f64_v >= stack[sp].f64_v);
+      break;
+    }
+    case LE_F64: {
+      stack[sp - 1].i32_v = (stack[sp - 1].f64_v <= stack[sp].f64_v);
       break;
     }
     case NEW_ARRAY: {
@@ -518,7 +619,8 @@ void run_machine(Machine *machine) {
       structure = malloc(sizeof(Structure));
       structure->meta_data =
           machine->env.function->constant_pool[offset].u.struct_meta_data;
-      structure->values = malloc(sizeof(Value) * structure->meta_data->n_values);
+      structure->values =
+          malloc(sizeof(Value) * structure->meta_data->n_values);
       sp++;
       stack[sp].obj_v = malloc(sizeof(GCObject));
       stack[sp].obj_v->kind = GCOBJECT_KIND_OBJECT;
