@@ -2,24 +2,88 @@
 #include <stdlib.h>
 #include <string.h>
 
-Program *create_program(char *file_name, i32 module_count) {
+Program *create_program(char *file_name, i32 global_variable_count,
+                        i32 structure_count, i32 function_count,
+                        i32 entry_point) {
   Program *program;
   int file_name_len;
-  i32 i;
+  int i;
 
   program = malloc(sizeof(Program));
+
+  /* program byte code file name */
   file_name_len = strlen(file_name);
   program->file_name = malloc(sizeof(char) * (file_name_len + 1));
   strcpy(program->file_name, file_name);
-  program->module_count = module_count;
-  program->modules = malloc(sizeof(Module) * module_count);
-  program->entry = NULL;
 
-  for (i = 0; i < module_count; i++) {
-    init_module(&(program->modules[i]));
+  /* global variables */
+  program->global_variable_count = global_variable_count;
+  program->global_variables =
+      global_variable_count == 0
+          ? NULL
+          : malloc(sizeof(GlobalVariable) * global_variable_count);
+
+  for (i = 0; i < program->global_variable_count; i++) {
+    program->global_variables[i].initializer = NULL;
+    program->global_variables[i].is_initialized = FALSE;
+    program->global_variables[i].name = NULL;
   }
 
+  /* structures */
+  program->structure_count = structure_count;
+  program->structures_meta_data =
+      structure_count == 0
+          ? NULL
+          : malloc(sizeof(StructureMetaData) * structure_count);
+
+  for (i = 0; i < program->structure_count; i++) {
+    program->structures_meta_data[i].name = NULL;
+  }
+
+  /* functions */
+  program->function_count = function_count;
+  program->functions = malloc(sizeof(Function) * function_count);
+
+  for (i = 0; i < program->function_count; i++) {
+    program->functions[i].code = NULL;
+    program->functions[i].constant_pool = NULL;
+  }
+
+  /* entry */
+  program->entry = &(program->functions[entry_point]);
+
   return program;
+}
+
+void free_program(Program *program) {
+  int i;
+  Function *function;
+
+  free(program->file_name);
+
+  /* global variables */
+  for (i = 0; i < program->global_variable_count; i++) {
+    free_string(program->global_variables[i].name);
+  }
+  free(program->global_variables);
+
+  /* structures */
+  for (i = 0; i < program->structure_count; i++) {
+    free_string(program->structures_meta_data[i].name);
+  }
+  free(program->structures_meta_data);
+
+  /* functions */
+  for (i = 0; i < program->function_count; i++) {
+    function = &(program->functions[i]);
+    free(function->constant_pool);
+    free_string(function->name);
+    free(function->code);
+  }
+  free(program->functions);
+
+  /* free program itself */
+  free(program);
 }
 
 void init_module(Module *module) {
@@ -73,30 +137,11 @@ void free_gc_object(GCObject *gc_object) {
   } else if (gc_object->kind == GCOBJECT_KIND_OBJ_ARRAY) {
     free(gc_object->u.arr_v->u.obj_array);
     free(gc_object->u.arr_v);
+  } else if (gc_object->kind == GCOBJECT_KIND_STRING) {
+    free_string(gc_object->u.str_v);
   } else {
     free(gc_object->u.struct_v->values);
+    free(gc_object->u.struct_v);
   }
   free(gc_object);
-}
-
-void free_program(Program *program) {
-  i32 i, j;
-  Module *module;
-  Function *function;
-
-  free(program->file_name);
-  for (i = 0; i < program->module_count; i++) {
-    module = &(program->modules[i]);
-    free_string(module->name);
-    free(module->constant_pool);
-    for (j = 0; j < module->function_count; j++) {
-      function = &(module->functions[j]);
-      free(function->constant_pool);
-      free_string(function->name);
-      free(function->code);
-    }
-    free(module->functions);
-  }
-  free(program->modules);
-  free(program);
 }

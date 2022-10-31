@@ -21,6 +21,8 @@ int main(int argc, char **argv) {
   test_access_array();
 
   test_function_invocation();
+  test_function_return_i32();
+  test_function_factorial();
 
   test_jump();
 

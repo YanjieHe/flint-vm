@@ -9,6 +9,7 @@
   if ((ACTUAL) == (EXPECTED)) {                                                \
     total_tests++;                                                             \
     passed_tests++;                                                            \
+    printf("Test case suceeded: \"%s\" (line %d)\n", __FUNCTION__, __LINE__);  \
   } else {                                                                     \
     total_tests++;                                                             \
     printf("Test case failed: \"%s\" (line %d)\n", __FUNCTION__, __LINE__);    \

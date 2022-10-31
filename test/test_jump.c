@@ -22,7 +22,7 @@ void test_jump() {
                                                 sizeof(code) / sizeof(Byte));
   machine = create_machine(100);
 
-  load_program_on_machine(program, machine, 0, 0);
+  load_program(machine, program);
   run_machine(machine);
 
   ASSERT_EQUAL(machine->stack[machine->sp].i32_v, 5);

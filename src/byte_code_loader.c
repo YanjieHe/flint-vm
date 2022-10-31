@@ -236,7 +236,9 @@ Program *read_byte_code_file(ByteCodeLoader *loader) {
                           "fail to read the count of modules");
         return NULL;
       } else {
-        program = create_program(loader->file_name, module_count);
+        /* TO DO */
+        program = create_program(loader->file_name, module_count, 0, 0, 0);
+        /*
         for (i = 0; i < module_count; i++) {
           load_module(loader, &(program->modules[i]));
           if (loader->error_messages) {
@@ -254,6 +256,7 @@ Program *read_byte_code_file(ByteCodeLoader *loader) {
             return NULL;
           }
         }
+        */
       }
     }
     return program;
@@ -264,10 +267,7 @@ void view_program(Program *program) {
   int i;
 
   printf("program file name: %s\n", program->file_name);
-  printf("# of modules: %d\n", program->module_count);
-  for (i = 0; i < program->module_count; i++) {
-    view_module(&(program->modules[i]));
-  }
+  /* TO DO: view global variables, functions and structures */
 }
 
 void view_module(Module *module) {

@@ -13,7 +13,7 @@ void test_create_an_array() {
                                                 sizeof(code) / sizeof(Byte));
   machine = create_machine(100);
 
-  load_program_on_machine(program, machine, 0, 0);
+  load_program(machine, program);
   run_machine(machine);
 
   ASSERT_EQUAL(machine->stack[machine->sp].obj_v->u.arr_v->length, 15);
@@ -35,7 +35,7 @@ void test_create_an_illegal_array() {
                                                 sizeof(code) / sizeof(Byte));
   machine = create_machine(100);
 
-  load_program_on_machine(program, machine, 0, 0);
+  load_program(machine, program);
   run_machine(machine);
 
   ASSERT_EQUAL(machine->stack[machine->sp].i32_v, -5);
@@ -72,13 +72,10 @@ void test_access_array() {
 
   program = create_program_with_single_function(__FUNCTION__, code,
                                                 sizeof(code) / sizeof(Byte));
+  program->functions[0].locals = 1;
   machine = create_machine(100);
 
-  load_program_on_machine(program, machine, 0, 0);
-
-  /* create space for the array variable */
-  machine->sp++;
-
+  load_program(machine, program);
   run_machine(machine);
 
   ASSERT_EQUAL(machine->machine_status, MACHINE_STOPPED);

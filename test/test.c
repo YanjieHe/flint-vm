@@ -12,31 +12,21 @@ void test_results_summary() {
 Program *create_program_with_single_function(const char *name, Byte *code,
                                              size_t code_length) {
   Program *program;
+  Function *entry;
 
-  program = malloc(sizeof(Program));
+  program = create_program("Program", 0, 0, 1, 0);
 
-  program->file_name = NULL;
-  program->module_count = 1;
-  program->modules = malloc(sizeof(Module));
-  program->structure_count = 0;
-  program->structures_meta_data = NULL;
-  init_module(&(program->modules[0]));
-  program->modules[0].function_count = 1;
-  program->modules[0].functions = malloc(sizeof(Function));
-  copy_byte_code(&(program->modules[0].functions[0]), code, code_length);
-  program->modules[0].functions[0].name = make_string(name);
-  program->modules[0].functions[0].constant_pool = NULL;
-  program->modules[0].functions[0].constant_pool_size = 0;
-  program->entry = &(program->modules[0].functions[0]);
+  entry = &(program->functions[0]);
+  copy_byte_code(entry, code, code_length);
+  entry->name = make_string(name);
+  entry->constant_pool = NULL;
+  entry->constant_pool_size = 0;
+  entry->args_size = 0;
+  entry->locals = 0;
+  entry->stack = 0;
+  program->entry = entry;
 
   return program;
-}
-
-void load_program_on_machine(Program *program, Machine *machine,
-                             int main_module_id, int main_function_id) {
-  machine->env.function =
-      &(program->modules[main_module_id].functions[main_function_id]);
-  machine->env.module = &(program->modules[main_module_id]);
 }
 
 void copy_byte_code(Function *function, Byte *code, size_t code_length) {
