@@ -1,7 +1,6 @@
 #ifndef FLINT_VM_VALUE_H
 #define FLINT_VM_VALUE_H
 
-#include "uthash.h"
 #include <stdint.h>
 
 typedef int8_t i8;
@@ -15,7 +14,7 @@ typedef int64_t i64;
 typedef float f32;
 typedef double f64;
 
-typedef i32 bool;
+typedef i32 BOOLEAN;
 #define TRUE 1
 #define FALSE 0
 
@@ -26,6 +25,7 @@ struct Function;
 struct Closure;
 struct StructureMetaData;
 struct GlobalVariable;
+struct NativeFunction;
 
 typedef union {
   i32 i32_v;
@@ -84,25 +84,13 @@ typedef struct Constant {
     struct StructureMetaData *struct_meta_data;
     struct GCObject *obj_v;
     struct GlobalVariable *global_variable_v;
+    struct NativeFunction *native_func_v;
   } u;
 } Constant;
 
-typedef struct FieldInfo {
-  char *name;
-  i32 type;
-  u8 is_mutable;
-} FieldInfo;
-
-typedef struct FieldIndex {
-  char *name;
-  u16 id;
-  UT_hash_handle hh;
-} FieldIndex;
-
 typedef struct StructureMetaData {
   String *name;
-  FieldIndex *fields_map;
-  FieldInfo *fields_arr;
+  String **field_names;
   u16 n_values;
 } StructureMetaData;
 
@@ -125,8 +113,10 @@ typedef struct Method {
 typedef struct Closure { Value *up_values; } Closure;
 
 typedef struct NativeFunction {
-  char *lib_name;
+  char *lib_path;
   char *func_name;
+  void *function_pointer;
+  i32 args_size;
 } NativeFunction;
 
 typedef struct Function {
@@ -149,7 +139,7 @@ typedef struct Function {
 
 typedef struct CallInfo {
   Function *caller;
-  Byte* caller_pc;
+  Byte *caller_pc;
   i32 caller_fp;
 } CallInfo;
 
@@ -177,7 +167,7 @@ typedef struct Module {
 typedef struct GlobalVariable {
   String *name;
   Value value;
-  bool is_initialized;
+  BOOLEAN is_initialized;
   Function *initializer;
 } GlobalVariable;
 
@@ -197,13 +187,17 @@ typedef struct Program {
   i32 function_count;
   Function *functions;
 
+  /* native library handlers */
+  i32 native_library_count;
+  void **native_library_handlers;
+
   /* entry */
   Function *entry;
 } Program;
 
 Program *create_program(char *file_name, i32 global_variable_count,
                         i32 structure_count, i32 function_count,
-                        i32 entry_point);
+                        i32 native_library_count, i32 entry_point);
 void free_program(Program *program);
 void init_module(Module *module);
 String *make_string(const char *s);

@@ -10,7 +10,8 @@ enum MachineStatus {
   MACHINE_RUNNING,
 
   /* runtime errors */
-  RUNTIME_ERROR_ARRAY_LENGTH_LESS_THAN_ZERO
+  RUNTIME_ERROR_ARRAY_LENGTH_LESS_THAN_ZERO,
+  RUNTIME_ERROR_NATIVE_FUNCTION_ERROR
 };
 
 typedef struct Machine {
@@ -39,5 +40,18 @@ void free_machine(Machine *machine);
 void load_program(Machine *machine, Program *program);
 
 void run_machine(Machine *machine);
+
+#define GET_I32_ARG(MACHINE, OFFSET)                                           \
+  ((MACHINE)->stack[(MACHINE)->fp + (OFFSET)].i32_v)
+#define GET_I64_ARG(MACHINE, OFFSET)                                           \
+  ((MACHINE)->stack[(MACHINE)->fp + (OFFSET)].i64_v)
+#define GET_F32_ARG(MACHINE, OFFSET)                                           \
+  ((MACHINE)->stack[(MACHINE)->fp + (OFFSET)].f32_v)
+#define GET_F64_ARG(MACHINE, OFFSET)                                           \
+  ((MACHINE)->stack[(MACHINE)->fp + (OFFSET)].f64_v)
+#define GET_STRUCT_ARG(MACHINE, OFFSET)                                        \
+  ((MACHINE)->stack[(MACHINE)->fp + (OFFSET)].obj_v->u.struct_v)
+#define GET_STRING_ARG(MACHINE, OFFSET)                                        \
+  ((MACHINE)->stack[(MACHINE)->fp + (OFFSET)].obj_v->u.str_v)
 
 #endif

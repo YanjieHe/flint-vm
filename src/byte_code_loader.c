@@ -237,7 +237,7 @@ Program *read_byte_code_file(ByteCodeLoader *loader) {
         return NULL;
       } else {
         /* TO DO */
-        program = create_program(loader->file_name, module_count, 0, 0, 0);
+        program = create_program(loader->file_name, module_count, 0, 0, 0, 0);
         /*
         for (i = 0; i < module_count; i++) {
           load_module(loader, &(program->modules[i]));

@@ -3,6 +3,7 @@
 #include "type.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #define STACK_PUSH_I32(VALUE)                                                  \
   sp++;                                                                        \
@@ -130,6 +131,7 @@ void run_machine(Machine *machine) {
   i32 boolean_value;
   Structure *structure;
   GlobalVariable *global_variable;
+  NativeFunction *native_function;
 
   stack = machine->stack;
   is_gc_object = machine->is_gc_object;
@@ -653,6 +655,21 @@ void run_machine(Machine *machine) {
       SAVE_MACHINE_STATE(machine, sp, fp, pc);
       break;
     }
+    case INVOKE_NATIVE_FUNCTION: {
+      READ_1BYTE_U8(offset);
+      native_function =
+          machine->env.function->constant_pool[offset].u.native_func_v;
+      machine->fp = sp - native_function->args_size + 1;
+      machine->sp = sp;
+      machine->pc = pc;
+      if (((int (*)(Machine *))(native_function->function_pointer))(machine) == -1) {
+        machine->machine_status = RUNTIME_ERROR_NATIVE_FUNCTION_ERROR;
+        return;
+      } else {
+        sp = machine->sp;
+      }
+      break;
+    }
     case RETURN: {
       call_info = (CallInfo *)&(stack[fp + machine->env.function->locals +
                                       machine->env.function->args_size]);
@@ -660,7 +677,6 @@ void run_machine(Machine *machine) {
       sp = fp;
       RESTORE_CALLER_ENV(call_info, machine, fp, pc);
       SAVE_MACHINE_STATE(machine, sp, fp, pc);
-      break;
       break;
     }
     case RETURN_I32: {

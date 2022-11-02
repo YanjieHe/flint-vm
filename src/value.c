@@ -1,10 +1,11 @@
 #include "value.h"
 #include <stdlib.h>
 #include <string.h>
+#include <dlfcn.h>
 
 Program *create_program(char *file_name, i32 global_variable_count,
                         i32 structure_count, i32 function_count,
-                        i32 entry_point) {
+                        i32 native_library_count, i32 entry_point) {
   Program *program;
   int file_name_len;
   int i;
@@ -49,6 +50,16 @@ Program *create_program(char *file_name, i32 global_variable_count,
     program->functions[i].constant_pool = NULL;
   }
 
+  /* native libraries */
+  program->native_library_count = native_library_count;
+  program->native_library_handlers =
+      native_library_count == 0 ? NULL
+                                : malloc(sizeof(void *) * native_library_count);
+
+  for (i = 0; i < program->native_library_count; i++) {
+    program->native_library_handlers[i] = NULL;
+  }
+
   /* entry */
   program->entry = &(program->functions[entry_point]);
 
@@ -81,6 +92,14 @@ void free_program(Program *program) {
     free(function->code);
   }
   free(program->functions);
+
+  /* native libraries */
+  for (i = 0; i < program->native_library_count; i++) {
+    if (program->native_library_handlers[i]) {
+      dlclose(program->native_library_handlers[i]);
+    }
+  }
+  free(program->native_library_handlers);
 
   /* free program itself */
   free(program);

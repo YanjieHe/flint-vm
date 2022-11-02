@@ -24,7 +24,7 @@ void test_structure() {
                  /* assign the value to the second field */
                  POP_FIELD_F64, 1, HALT};
 
-  program = create_program("Program", 0, 1, 1, 0);
+  program = create_program("Program", 0, 1, 1, 0, 0);
 
   program->structures_meta_data[0].n_values = 2;
   program->structures_meta_data[0].name = make_string("Structure");
@@ -85,7 +85,7 @@ void test_structure_get_field_value() {
                  /* push the second field of the object */
                  PUSH_LOCAL_OBJECT, 0, PUSH_FIELD_OBJECT, 1, HALT};
 
-  program = create_program("Program", 0, 1, 1, 0);
+  program = create_program("Program", 0, 1, 1, 0, 0);
 
   program->structures_meta_data[0].n_values = 2;
   program->structures_meta_data[0].name = make_string("Structure");

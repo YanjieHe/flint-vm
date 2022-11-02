@@ -1,5 +1,6 @@
 #include "test.h"
 #include <stdlib.h>
+#include <string.h>
 
 int total_tests;
 int passed_tests;
@@ -14,7 +15,7 @@ Program *create_program_with_single_function(const char *name, Byte *code,
   Program *program;
   Function *entry;
 
-  program = create_program("Program", 0, 0, 1, 0);
+  program = create_program("Program", 0, 0, 1, 0, 0);
 
   entry = &(program->functions[0]);
   copy_byte_code(entry, code, code_length);
