@@ -3,6 +3,7 @@
 #include "type.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #define STACK_PUSH_I32(VALUE)                                                  \
   sp++;                                                                        \
@@ -50,17 +51,27 @@
   (GC_OBJECT)->next = (HEAP);                                                  \
   (HEAP) = (GC_OBJECT);
 
-#define READ_1BYTE(VALUE)                                                      \
-  (VALUE) = code[pc];                                                          \
+#define READ_1BYTE_U8(VALUE)                                                   \
+  (VALUE) = *pc;                                                               \
   pc++;
 
 #define READ_1BYTE_I8(VALUE)                                                   \
-  (VALUE) = (i8)code[pc];                                                      \
+  (VALUE) = (i8)(*pc);                                                         \
   pc++;
 
 #define READ_2BYTES_I16(VALUE)                                                 \
-  (VALUE) = ((i16)((((u16)code[pc]) << 8) + ((u16)(code[pc + 1]))));           \
+  (VALUE) = ((i16)((((u16)(*pc)) << 8) + ((u16)(*(pc + 1)))));                 \
   pc += 2;
+
+#define SAVE_MACHINE_STATE(MACHINE, SP, FP, PC)                                \
+  (MACHINE)->sp = (SP);                                                        \
+  (MACHINE)->fp = (FP);                                                        \
+  (MACHINE)->pc = (PC);
+
+#define RESTORE_CALLER_ENV(CALL_INFO, MACHINE, FP, PC)                         \
+  (MACHINE)->env.function = (CALL_INFO)->caller;                               \
+  (FP) = (CALL_INFO)->caller_fp;                                               \
+  (PC) = (CALL_INFO)->caller_pc;
 
 Machine *create_machine(i32 stack_max_size) {
   Machine *machine;
@@ -71,26 +82,45 @@ Machine *create_machine(i32 stack_max_size) {
   machine->is_gc_object = malloc(sizeof(u8) * stack_max_size);
   machine->heap = NULL;
   machine->env.function = NULL;
-  machine->env.module = NULL;
   machine->sp = -1;
   machine->fp = 0;
-  machine->pc = 0;
+  machine->pc = NULL;
   machine->machine_status = MACHINE_STOPPED;
   memset(machine->is_gc_object, 0, stack_max_size);
 
   return machine;
 }
 
+void free_machine(Machine *machine) {
+  GCObject *current;
+  GCObject *next;
+
+  current = machine->heap;
+  while (current != NULL) {
+    next = current->next;
+    free_gc_object(current);
+    current = next;
+  }
+
+  free(machine->stack);
+  free(machine->is_gc_object);
+  free(machine);
+}
+
+void load_program(Machine *machine, Program *program) {
+  machine->env.function = program->entry;
+  machine->sp += (program->entry->locals + program->entry->args_size);
+  machine->pc = program->entry->code;
+}
+
 void run_machine(Machine *machine) {
   /* state */
-  Byte *code;
-  i32 code_length;
   Byte op;
   Value *stack;
   u8 *is_gc_object;
   i32 sp;
   i32 fp;
-  i32 pc;
+  Byte *pc;
 
   /* temporary storage */
   Array *array;
@@ -100,11 +130,11 @@ void run_machine(Machine *machine) {
   CallInfo *call_info;
   i32 boolean_value;
   Structure *structure;
+  GlobalVariable *global_variable;
+  NativeFunction *native_function;
 
   stack = machine->stack;
   is_gc_object = machine->is_gc_object;
-  code = machine->env.function->code;
-  code_length = machine->env.function->code_length;
   sp = machine->sp;
   fp = machine->fp;
   pc = machine->pc;
@@ -120,19 +150,32 @@ void run_machine(Machine *machine) {
 
   /* printf("code length: %d\n", code_length); */
 
-  while (pc < code_length) {
+  while (1) {
 
-    op = code[pc];
+    op = *pc;
     pc++;
     /* printf("op = %s\n", opcode_info[op][0]); */
 
     switch (op) {
+    case HALT: {
+      SAVE_MACHINE_STATE(machine, sp, fp, pc);
+      machine->machine_status = MACHINE_STOPPED;
+      return;
+    }
     case PUSH_I32_0: {
       STACK_PUSH_I32(0);
       break;
     }
     case PUSH_I32_1: {
       STACK_PUSH_I32(1);
+      break;
+    }
+    case PUSH_I64_0: {
+      STACK_PUSH_I64(0);
+      break;
+    }
+    case PUSH_I64_1: {
+      STACK_PUSH_I64(1);
       break;
     }
     case PUSH_I32_1BYTE: {
@@ -146,27 +189,27 @@ void run_machine(Machine *machine) {
       break;
     }
     case PUSH_I32: {
-      READ_1BYTE(offset);
+      READ_1BYTE_U8(offset);
       STACK_PUSH_I32(machine->env.function->constant_pool[offset].u.i32_v);
       break;
     }
     case PUSH_I64: {
-      READ_1BYTE(offset);
+      READ_1BYTE_U8(offset);
       STACK_PUSH_I64(machine->env.function->constant_pool[offset].u.i64_v);
       break;
     }
     case PUSH_F32: {
-      READ_1BYTE(offset);
+      READ_1BYTE_U8(offset);
       STACK_PUSH_F32(machine->env.function->constant_pool[offset].u.f32_v);
       break;
     }
     case PUSH_F64: {
-      READ_1BYTE(offset);
+      READ_1BYTE_U8(offset);
       STACK_PUSH_F64(machine->env.function->constant_pool[offset].u.f64_v);
       break;
     }
-    case PUSH_STRING:{
-      READ_1BYTE(offset);
+    case PUSH_STRING: {
+      READ_1BYTE_U8(offset);
       STACK_PUSH_OBJECT(machine->env.function->constant_pool[offset].u.obj_v);
       break;
     }
@@ -268,98 +311,122 @@ void run_machine(Machine *machine) {
     }
     case EQ_I32: {
       stack[sp - 1].i32_v = (stack[sp - 1].i32_v == stack[sp].i32_v);
+      sp--;
       break;
     }
     case NE_I32: {
       stack[sp - 1].i32_v = (stack[sp - 1].i32_v != stack[sp].i32_v);
+      sp--;
       break;
     }
     case GT_I32: {
       stack[sp - 1].i32_v = (stack[sp - 1].i32_v > stack[sp].i32_v);
+      sp--;
       break;
     }
     case LT_I32: {
       stack[sp - 1].i32_v = (stack[sp - 1].i32_v < stack[sp].i32_v);
+      sp--;
       break;
     }
     case GE_I32: {
       stack[sp - 1].i32_v = (stack[sp - 1].i32_v >= stack[sp].i32_v);
+      sp--;
       break;
     }
     case LE_I32: {
       stack[sp - 1].i32_v = (stack[sp - 1].i32_v <= stack[sp].i32_v);
+      sp--;
       break;
     }
     case EQ_I64: {
       stack[sp - 1].i32_v = (stack[sp - 1].i64_v == stack[sp].i64_v);
+      sp--;
       break;
     }
     case NE_I64: {
       stack[sp - 1].i32_v = (stack[sp - 1].i64_v != stack[sp].i64_v);
+      sp--;
       break;
     }
     case GT_I64: {
       stack[sp - 1].i32_v = (stack[sp - 1].i64_v > stack[sp].i64_v);
+      sp--;
       break;
     }
     case LT_I64: {
       stack[sp - 1].i32_v = (stack[sp - 1].i64_v < stack[sp].i64_v);
+      sp--;
       break;
     }
     case GE_I64: {
       stack[sp - 1].i32_v = (stack[sp - 1].i64_v >= stack[sp].i64_v);
+      sp--;
       break;
     }
     case LE_I64: {
       stack[sp - 1].i32_v = (stack[sp - 1].i64_v <= stack[sp].i64_v);
+      sp--;
       break;
     }
     case EQ_F32: {
       stack[sp - 1].i32_v = (stack[sp - 1].f32_v == stack[sp].f32_v);
+      sp--;
       break;
     }
     case NE_F32: {
       stack[sp - 1].i32_v = (stack[sp - 1].f32_v != stack[sp].f32_v);
+      sp--;
       break;
     }
     case GT_F32: {
       stack[sp - 1].i32_v = (stack[sp - 1].f32_v > stack[sp].f32_v);
+      sp--;
       break;
     }
     case LT_F32: {
       stack[sp - 1].i32_v = (stack[sp - 1].f32_v < stack[sp].f32_v);
+      sp--;
       break;
     }
     case GE_F32: {
       stack[sp - 1].i32_v = (stack[sp - 1].f32_v >= stack[sp].f32_v);
+      sp--;
       break;
     }
     case LE_F32: {
       stack[sp - 1].i32_v = (stack[sp - 1].f32_v <= stack[sp].f32_v);
+      sp--;
       break;
     }
     case EQ_F64: {
       stack[sp - 1].i32_v = (stack[sp - 1].f64_v == stack[sp].f64_v);
+      sp--;
       break;
     }
     case NE_F64: {
       stack[sp - 1].i32_v = (stack[sp - 1].f64_v != stack[sp].f64_v);
+      sp--;
       break;
     }
     case GT_F64: {
       stack[sp - 1].i32_v = (stack[sp - 1].f64_v > stack[sp].f64_v);
+      sp--;
       break;
     }
     case LT_F64: {
       stack[sp - 1].i32_v = (stack[sp - 1].f64_v < stack[sp].f64_v);
+      sp--;
       break;
     }
     case GE_F64: {
       stack[sp - 1].i32_v = (stack[sp - 1].f64_v >= stack[sp].f64_v);
+      sp--;
       break;
     }
     case LE_F64: {
       stack[sp - 1].i32_v = (stack[sp - 1].f64_v <= stack[sp].f64_v);
+      sp--;
       break;
     }
     case NEW_ARRAY: {
@@ -374,7 +441,7 @@ void run_machine(Machine *machine) {
         HEAP_PUT(machine->heap, stack[sp].obj_v);
         is_gc_object[sp] = 1;
 
-        switch (code[pc]) {
+        switch (*pc) {
         case TYPE_I32: {
           array->u.i32_array = malloc(sizeof(i32) * length);
           stack[sp].obj_v->kind = GCOBJECT_KIND_I32_ARRAY;
@@ -404,7 +471,7 @@ void run_machine(Machine *machine) {
         pc++;
         break;
       } else {
-        update_machine_state(machine, sp, fp, pc);
+        SAVE_MACHINE_STATE(machine, sp, fp, pc);
         machine->machine_status = RUNTIME_ERROR_ARRAY_LENGTH_LESS_THAN_ZERO;
         return;
       }
@@ -523,57 +590,57 @@ void run_machine(Machine *machine) {
       break;
     }
     case PUSH_LOCAL_I32: {
-      READ_1BYTE(offset);
+      READ_1BYTE_U8(offset);
       STACK_PUSH_I32(stack[fp + offset].i32_v);
       break;
     }
     case PUSH_LOCAL_I64: {
-      READ_1BYTE(offset);
+      READ_1BYTE_U8(offset);
       STACK_PUSH_I64(stack[fp + offset].i64_v);
       break;
     }
     case PUSH_LOCAL_F32: {
-      READ_1BYTE(offset);
+      READ_1BYTE_U8(offset);
       STACK_PUSH_F32(stack[fp + offset].f32_v);
       break;
     }
     case PUSH_LOCAL_F64: {
-      READ_1BYTE(offset);
+      READ_1BYTE_U8(offset);
       STACK_PUSH_F64(stack[fp + offset].f64_v);
       break;
     }
     case PUSH_LOCAL_OBJECT: {
-      READ_1BYTE(offset);
+      READ_1BYTE_U8(offset);
       STACK_PUSH_OBJECT(stack[fp + offset].obj_v);
       break;
     }
     case POP_LOCAL_I32: {
-      READ_1BYTE(offset);
+      READ_1BYTE_U8(offset);
       STACK_POP_I32(stack[fp + offset].i32_v);
       break;
     }
     case POP_LOCAL_I64: {
-      READ_1BYTE(offset);
+      READ_1BYTE_U8(offset);
       STACK_POP_I64(stack[fp + offset].i64_v);
       break;
     }
     case POP_LOCAL_F32: {
-      READ_1BYTE(offset);
+      READ_1BYTE_U8(offset);
       STACK_POP_F32(stack[fp + offset].f32_v);
       break;
     }
     case POP_LOCAL_F64: {
-      READ_1BYTE(offset);
+      READ_1BYTE_U8(offset);
       STACK_POP_F64(stack[fp + offset].f64_v);
       break;
     }
     case POP_LOCAL_OBJECT: {
-      READ_1BYTE(offset);
+      READ_1BYTE_U8(offset);
       STACK_POP_OBJECT(stack[fp + offset].obj_v);
       break;
     }
     case INVOKE_FUNCTION: {
-      READ_1BYTE(offset);
+      READ_1BYTE_U8(offset);
       callee = machine->env.function->constant_pool[offset].u.func_v;
       sp = sp + callee->locals;
       sp++;
@@ -583,10 +650,92 @@ void run_machine(Machine *machine) {
       call_info->caller_pc = pc;
       sp = sp + CALL_INFO_ALIGN_SIZE;
       machine->env.function = callee;
-      pc = 0;
+      pc = callee->code;
       fp = sp - CALL_INFO_ALIGN_SIZE - callee->locals - callee->args_size;
-      code = callee->code;
-      code_length = callee->code_length;
+      SAVE_MACHINE_STATE(machine, sp, fp, pc);
+      break;
+    }
+    case INVOKE_NATIVE_FUNCTION: {
+      READ_1BYTE_U8(offset);
+      native_function =
+          machine->env.function->constant_pool[offset].u.native_func_v;
+      machine->fp = sp - native_function->args_size + 1;
+      machine->sp = sp;
+      machine->pc = pc;
+      if (((int (*)(Machine *))(native_function->function_pointer))(machine) == -1) {
+        machine->machine_status = RUNTIME_ERROR_NATIVE_FUNCTION_ERROR;
+        return;
+      } else {
+        sp = machine->sp;
+      }
+      break;
+    }
+    case RETURN: {
+      call_info = (CallInfo *)&(stack[fp + machine->env.function->locals +
+                                      machine->env.function->args_size]);
+      memset(is_gc_object + fp, 0, sp - fp + 1);
+      sp = fp;
+      RESTORE_CALLER_ENV(call_info, machine, fp, pc);
+      SAVE_MACHINE_STATE(machine, sp, fp, pc);
+      break;
+    }
+    case RETURN_I32: {
+      call_info = (CallInfo *)&(stack[fp + machine->env.function->locals +
+                                      machine->env.function->args_size]);
+      stack[fp].i32_v = stack[sp].i32_v;
+      /* ignore the value on the top of the stack because it is not a GC object
+       */
+      memset(is_gc_object + fp, 0, sp - fp);
+      sp = fp;
+      RESTORE_CALLER_ENV(call_info, machine, fp, pc);
+      SAVE_MACHINE_STATE(machine, sp, fp, pc);
+      break;
+    }
+    case RETURN_I64: {
+      call_info = (CallInfo *)&(stack[fp + machine->env.function->locals +
+                                      machine->env.function->args_size]);
+      stack[fp].i64_v = stack[sp].i64_v;
+      /* ignore the value on the top of the stack because it is not a GC object
+       */
+      memset(is_gc_object + fp, 0, sp - fp);
+      sp = fp;
+      RESTORE_CALLER_ENV(call_info, machine, fp, pc);
+      SAVE_MACHINE_STATE(machine, sp, fp, pc);
+      break;
+    }
+    case RETURN_F32: {
+      call_info = (CallInfo *)&(stack[fp + machine->env.function->locals +
+                                      machine->env.function->args_size]);
+      stack[fp].f32_v = stack[sp].f32_v;
+      /* ignore the value on the top of the stack because it is not a GC object
+       */
+      memset(is_gc_object + fp, 0, sp - fp);
+      sp = fp;
+      RESTORE_CALLER_ENV(call_info, machine, fp, pc);
+      SAVE_MACHINE_STATE(machine, sp, fp, pc);
+      break;
+    }
+    case RETURN_F64: {
+      call_info = (CallInfo *)&(stack[fp + machine->env.function->locals +
+                                      machine->env.function->args_size]);
+      stack[fp].f64_v = stack[sp].f64_v;
+      /* ignore the value on the top of the stack because it is not a GC object
+       */
+      memset(is_gc_object + fp, 0, sp - fp);
+      sp = fp;
+      RESTORE_CALLER_ENV(call_info, machine, fp, pc);
+      SAVE_MACHINE_STATE(machine, sp, fp, pc);
+      break;
+    }
+    case RETURN_OBJECT: {
+      call_info = (CallInfo *)&(stack[fp + machine->env.function->locals +
+                                      machine->env.function->args_size]);
+      stack[fp].obj_v = stack[sp].obj_v;
+      memset(is_gc_object + fp + 1, 0, sp - fp + 1);
+      is_gc_object[fp] = TRUE;
+      sp = fp;
+      RESTORE_CALLER_ENV(call_info, machine, fp, pc);
+      SAVE_MACHINE_STATE(machine, sp, fp, pc);
       break;
     }
     case JUMP: {
@@ -615,7 +764,7 @@ void run_machine(Machine *machine) {
       break;
     }
     case NEW: {
-      READ_1BYTE(offset);
+      READ_1BYTE_U8(offset);
       structure = malloc(sizeof(Structure));
       structure->meta_data =
           machine->env.function->constant_pool[offset].u.struct_meta_data;
@@ -630,64 +779,64 @@ void run_machine(Machine *machine) {
       break;
     }
     case PUSH_FIELD_I32: {
-      READ_1BYTE(offset);
+      READ_1BYTE_U8(offset);
       stack[sp].i32_v = stack[sp].obj_v->u.struct_v->values[offset].i32_v;
       is_gc_object[sp] = FALSE;
       break;
     }
     case PUSH_FIELD_I64: {
-      READ_1BYTE(offset);
+      READ_1BYTE_U8(offset);
       stack[sp].i64_v = stack[sp].obj_v->u.struct_v->values[offset].i64_v;
       is_gc_object[sp] = FALSE;
       break;
     }
     case PUSH_FIELD_F32: {
-      READ_1BYTE(offset);
+      READ_1BYTE_U8(offset);
       stack[sp].f32_v = stack[sp].obj_v->u.struct_v->values[offset].f32_v;
       is_gc_object[sp] = FALSE;
       break;
     }
     case PUSH_FIELD_F64: {
-      READ_1BYTE(offset);
+      READ_1BYTE_U8(offset);
       stack[sp].f64_v = stack[sp].obj_v->u.struct_v->values[offset].f64_v;
       is_gc_object[sp] = FALSE;
       break;
     }
     case PUSH_FIELD_OBJECT: {
-      READ_1BYTE(offset);
+      READ_1BYTE_U8(offset);
       stack[sp].obj_v = stack[sp].obj_v->u.struct_v->values[offset].obj_v;
       break;
     }
     case POP_FIELD_I32: {
-      READ_1BYTE(offset);
+      READ_1BYTE_U8(offset);
       stack[sp - 1].obj_v->u.struct_v->values[offset].i32_v = stack[sp].i32_v;
       is_gc_object[sp - 1] = FALSE;
       sp = sp - 2;
       break;
     }
     case POP_FIELD_I64: {
-      READ_1BYTE(offset);
+      READ_1BYTE_U8(offset);
       stack[sp - 1].obj_v->u.struct_v->values[offset].i64_v = stack[sp].i64_v;
       is_gc_object[sp - 1] = FALSE;
       sp = sp - 2;
       break;
     }
     case POP_FIELD_F32: {
-      READ_1BYTE(offset);
+      READ_1BYTE_U8(offset);
       stack[sp - 1].obj_v->u.struct_v->values[offset].f32_v = stack[sp].f32_v;
       is_gc_object[sp - 1] = FALSE;
       sp = sp - 2;
       break;
     }
     case POP_FIELD_F64: {
-      READ_1BYTE(offset);
+      READ_1BYTE_U8(offset);
       stack[sp - 1].obj_v->u.struct_v->values[offset].f64_v = stack[sp].f64_v;
       is_gc_object[sp - 1] = FALSE;
       sp = sp - 2;
       break;
     }
     case POP_FIELD_OBJECT: {
-      READ_1BYTE(offset);
+      READ_1BYTE_U8(offset);
       stack[sp - 1].obj_v->u.struct_v->values[offset].obj_v = stack[sp].obj_v;
       is_gc_object[sp - 1] = FALSE;
       is_gc_object[sp] = FALSE;
@@ -700,31 +849,17 @@ void run_machine(Machine *machine) {
       is_gc_object[sp] = is_gc_object[sp - 1];
       break;
     }
+    case PUSH_GLOBAL_I32: {
+      READ_1BYTE_U8(offset);
+      global_variable =
+          machine->env.function->constant_pool[offset].u.global_variable_v;
+      if (global_variable->is_initialized) {
+        STACK_PUSH_I32(global_variable->value.i32_v);
+      } else {
+        /* TO DO: Run Initializer */
+      }
+      break;
+    }
     }
   }
-
-  update_machine_state(machine, sp, fp, pc);
-  machine->machine_status = MACHINE_COMPLETED;
-}
-
-void update_machine_state(Machine *machine, i32 sp, i32 fp, i32 pc) {
-  machine->sp = sp;
-  machine->fp = fp;
-  machine->pc = pc;
-}
-
-void free_machine(Machine *machine) {
-  GCObject *current;
-  GCObject *next;
-
-  current = machine->heap;
-  while (current != NULL) {
-    next = current->next;
-    free_gc_object(current);
-    current = next;
-  }
-
-  free(machine->stack);
-  free(machine->is_gc_object);
-  free(machine);
 }
