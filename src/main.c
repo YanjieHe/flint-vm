@@ -6,6 +6,7 @@
 #include "test_function.h"
 #include "test_jump.h"
 #include "test_structure.h"
+#include "test_global_variable.h"
 
 
 #define STACK_MAX_SIZE 10000
@@ -29,6 +30,8 @@ int main(int argc, char **argv) {
 
   test_structure();
   test_structure_get_field_value();
+  
+  test_global_variable();
 
   test_results_summary();
   /*
