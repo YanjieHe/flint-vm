@@ -147,23 +147,6 @@ typedef struct CallInfo {
   ((sizeof(CallInfo) / sizeof(Value)) +                                        \
    ((sizeof(CallInfo) % sizeof(Value)) ? 1 : 0))
 
-typedef struct Module {
-  /* module name */
-  String *name;
-
-  /* constant pool */
-  i32 constant_pool_size;
-  Constant *constant_pool;
-
-  /* functions */
-  i32 function_count;
-  Function *functions;
-
-  /* structures */
-  i32 structure_count;
-  Structure *structures;
-} Module;
-
 typedef struct GlobalVariable {
   String *name;
   Value value;
