@@ -1,8 +1,9 @@
 import pandas as pd
 import numpy as np
+from typing import List, Tuple
 
 
-def expand(df):
+def expand(df: pd.DataFrame) -> List[Tuple[str, str]]:
     result = []
     for (_, op_name, op_type, with_types) in df.itertuples():
         if with_types != "":
@@ -14,29 +15,29 @@ def expand(df):
     return result
 
 
-def make_enum(opcode_list):
+def make_enum(opcode_list: List[Tuple[str, str]]) -> str:
     lines = []
     for (i, (op_name, op_type)) in enumerate(opcode_list):
         lines.append("\t{0} = {1}".format(op_name, i))
     return "enum OpCode {{\n{0}\n}};".format(",\n".join(lines))
 
 
-def make_opcode_info_array(op_list):
+def make_opcode_info_array(op_list: List[Tuple[str, str]]) -> str:
     lines = []
     for (op_name, op_type) in op_list:
         lines.append('\t{{ "{0}", "{1}" }}'.format(op_name, op_type))
     return "static const char* opcode_info [][2] = {{\n{0}\n}};".format(",\n".join(lines))
 
 
-def header_beginning():
+def header_beginning() -> str:
     return "\n".join(["#ifndef FLINT_VM_OP_CODE_H", "#define FLINT_VM_OP_CODE_H", ""])
 
 
-def header_ending():
+def header_ending() -> str:
     return "\n".join(["#endif /* FLINT_VM_OP_CODE_H */"])
 
 
-def main():
+def main() -> None:
     df = pd.read_csv("opcode.csv")
     df["op_type"].replace(np.nan, "", inplace=True)
     df["with_types"].replace(np.nan, "", inplace=True)
