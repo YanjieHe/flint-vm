@@ -218,7 +218,3 @@ void test_function_native_function_call() {
   free_program(program);
   free_machine(machine);
 }
-
-void test_function_without_return_value() {
-  /* TO DO */
-}

@@ -178,6 +178,22 @@ void run_machine(Machine *machine) {
       STACK_PUSH_I64(1);
       break;
     }
+    case PUSH_F32_0: {
+      STACK_PUSH_F32(0);
+      break;
+    }
+    case PUSH_F32_1: {
+      STACK_PUSH_F32(1);
+      break;
+    }
+    case PUSH_F64_0: {
+      STACK_PUSH_F64(0);
+      break;
+    }
+    case PUSH_F64_1: {
+      STACK_PUSH_F64(1);
+      break;
+    }
     case PUSH_I32_1BYTE: {
       sp++;
       READ_1BYTE_I8(stack[sp].i32_v);
@@ -662,7 +678,8 @@ void run_machine(Machine *machine) {
       machine->fp = sp - native_function->args_size + 1;
       machine->sp = sp;
       machine->pc = pc;
-      if (((int (*)(Machine *))(native_function->function_pointer))(machine) == -1) {
+      if (((int (*)(Machine *))(native_function->function_pointer))(machine) ==
+          -1) {
         machine->machine_status = RUNTIME_ERROR_NATIVE_FUNCTION_ERROR;
         return;
       } else {
@@ -856,8 +873,147 @@ void run_machine(Machine *machine) {
       if (global_variable->is_initialized) {
         STACK_PUSH_I32(global_variable->value.i32_v);
       } else {
-        /* TO DO: Run Initializer */
+        callee = global_variable->initializer;
+        sp = sp + callee->locals;
+        sp++;
+        call_info = (CallInfo *)&(stack[sp]);
+        call_info->caller = machine->env.function;
+        call_info->caller_fp = fp;
+        call_info->caller_pc = pc - 2;
+        sp = sp + CALL_INFO_ALIGN_SIZE;
+        machine->env.function = callee;
+        pc = callee->code;
+        fp = sp - CALL_INFO_ALIGN_SIZE - callee->locals;
+        SAVE_MACHINE_STATE(machine, sp, fp, pc);
       }
+      break;
+    }
+    case PUSH_GLOBAL_I64: {
+      READ_1BYTE_U8(offset);
+      global_variable =
+          machine->env.function->constant_pool[offset].u.global_variable_v;
+      if (global_variable->is_initialized) {
+        STACK_PUSH_I64(global_variable->value.i64_v);
+      } else {
+        callee = global_variable->initializer;
+        sp = sp + callee->locals;
+        sp++;
+        call_info = (CallInfo *)&(stack[sp]);
+        call_info->caller = machine->env.function;
+        call_info->caller_fp = fp;
+        call_info->caller_pc = pc - 2;
+        sp = sp + CALL_INFO_ALIGN_SIZE;
+        machine->env.function = callee;
+        pc = callee->code;
+        fp = sp - CALL_INFO_ALIGN_SIZE - callee->locals;
+        SAVE_MACHINE_STATE(machine, sp, fp, pc);
+      }
+      break;
+    }
+    case PUSH_GLOBAL_F32: {
+      READ_1BYTE_U8(offset);
+      global_variable =
+          machine->env.function->constant_pool[offset].u.global_variable_v;
+      if (global_variable->is_initialized) {
+        STACK_PUSH_F32(global_variable->value.f32_v);
+      } else {
+        callee = global_variable->initializer;
+        sp = sp + callee->locals;
+        sp++;
+        call_info = (CallInfo *)&(stack[sp]);
+        call_info->caller = machine->env.function;
+        call_info->caller_fp = fp;
+        call_info->caller_pc = pc - 2;
+        sp = sp + CALL_INFO_ALIGN_SIZE;
+        machine->env.function = callee;
+        pc = callee->code;
+        fp = sp - CALL_INFO_ALIGN_SIZE - callee->locals;
+        SAVE_MACHINE_STATE(machine, sp, fp, pc);
+      }
+      break;
+    }
+    case PUSH_GLOBAL_F64: {
+      READ_1BYTE_U8(offset);
+      global_variable =
+          machine->env.function->constant_pool[offset].u.global_variable_v;
+      if (global_variable->is_initialized) {
+        STACK_PUSH_F64(global_variable->value.f64_v);
+      } else {
+        callee = global_variable->initializer;
+        sp = sp + callee->locals;
+        sp++;
+        call_info = (CallInfo *)&(stack[sp]);
+        call_info->caller = machine->env.function;
+        call_info->caller_fp = fp;
+        call_info->caller_pc = pc - 2;
+        sp = sp + CALL_INFO_ALIGN_SIZE;
+        machine->env.function = callee;
+        pc = callee->code;
+        fp = sp - CALL_INFO_ALIGN_SIZE - callee->locals;
+        SAVE_MACHINE_STATE(machine, sp, fp, pc);
+      }
+      break;
+    }
+    case PUSH_GLOBAL_OBJECT: {
+      READ_1BYTE_U8(offset);
+      global_variable =
+          machine->env.function->constant_pool[offset].u.global_variable_v;
+      if (global_variable->is_initialized) {
+        STACK_PUSH_OBJECT(global_variable->value.obj_v);
+      } else {
+        callee = global_variable->initializer;
+        sp = sp + callee->locals;
+        sp++;
+        call_info = (CallInfo *)&(stack[sp]);
+        call_info->caller = machine->env.function;
+        call_info->caller_fp = fp;
+        call_info->caller_pc = pc - 2;
+        sp = sp + CALL_INFO_ALIGN_SIZE;
+        machine->env.function = callee;
+        pc = callee->code;
+        fp = sp - CALL_INFO_ALIGN_SIZE - callee->locals;
+        SAVE_MACHINE_STATE(machine, sp, fp, pc);
+      }
+      break;
+    }
+    case POP_GLOBAL_I32: {
+      READ_1BYTE_U8(offset);
+      global_variable =
+          machine->env.function->constant_pool[offset].u.global_variable_v;
+      STACK_POP_I32(global_variable->value.i32_v);
+      global_variable->is_initialized = TRUE;
+      break;
+    }
+    case POP_GLOBAL_I64: {
+      READ_1BYTE_U8(offset);
+      global_variable =
+          machine->env.function->constant_pool[offset].u.global_variable_v;
+      STACK_POP_I64(global_variable->value.i64_v);
+      global_variable->is_initialized = TRUE;
+      break;
+    }
+    case POP_GLOBAL_F32: {
+      READ_1BYTE_U8(offset);
+      global_variable =
+          machine->env.function->constant_pool[offset].u.global_variable_v;
+      STACK_POP_F32(global_variable->value.f32_v);
+      global_variable->is_initialized = TRUE;
+      break;
+    }
+    case POP_GLOBAL_F64: {
+      READ_1BYTE_U8(offset);
+      global_variable =
+          machine->env.function->constant_pool[offset].u.global_variable_v;
+      STACK_POP_F64(global_variable->value.f64_v);
+      global_variable->is_initialized = TRUE;
+      break;
+    }
+    case POP_GLOBAL_OBJECT: {
+      READ_1BYTE_U8(offset);
+      global_variable =
+          machine->env.function->constant_pool[offset].u.global_variable_v;
+      STACK_POP_OBJECT(global_variable->value.obj_v);
+      global_variable->is_initialized = TRUE;
       break;
     }
     }
