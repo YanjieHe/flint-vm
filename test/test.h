@@ -3,6 +3,8 @@
 
 #include "value.h"
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include "machine.h"
 
 #define ASSERT_EQUAL(ACTUAL, EXPECTED)                                         \

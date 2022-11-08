@@ -1,12 +1,21 @@
 #include "byte_code_loader.h"
 #include <stdlib.h>
+#include <string.h>
 #include "opcode.h"
+#include <math.h>
 
 #define TWO_BYTES_TO_U16(BYTE1, BYTE2)                                         \
   ((((uint16_t)BYTE1) << 8) + ((uint16_t)BYTE2))
 
 #define TWO_BYTES_TO_I16(BYTE1, BYTE2)                                         \
   ((((int16_t)BYTE1) << 8) + ((int16_t)BYTE2))
+
+#define RAISE_IF_ANY_LOADING_ERROR(LOADER, MESSAGE)                            \
+  if ((LOADER)->error_messages) {                                              \
+    append_error(LOADER, (MESSAGE));                                           \
+                                                                               \
+    return;                                                                    \
+  }
 
 /*
 * @brief create a byte code loader
@@ -21,13 +30,14 @@ ByteCodeLoader *create_byte_code_loader(char *file_name) {
   file = fopen(file_name, "rb");
   if (file) {
     loader = malloc(sizeof(ByteCodeLoader));
-    printf("allocate loader memory\n");
+
     file_name_len = strlen(file_name);
     loader->file_name = malloc(sizeof(char) * (file_name_len + 1));
     strcpy(loader->file_name, file_name);
-    printf("loader->file_name\n");
+
     loader->file = file;
     loader->error_messages = NULL;
+
     return loader;
   } else {
     return NULL;
@@ -41,9 +51,32 @@ Byte read_byte(ByteCodeLoader *loader) {
   if (peek != EOF) {
     return (Byte)peek;
   } else {
-    utarray_push_back(loader->error_messages, "error occurs when reading byte");
+    append_error(loader, "error occurs when reading byte");
+
     return 0;
   }
+}
+
+Byte *read_bytes(ByteCodeLoader *loader, i32 count) {
+  Byte *bytes;
+  int peek;
+  int i;
+
+  bytes = malloc(sizeof(Byte) * count);
+
+  for (i = 0; i < count; i++) {
+    peek = fgetc(loader->file);
+    if (peek != EOF) {
+      bytes[i] = (Byte)peek;
+    } else {
+      append_error(loader, "error occurs when reading bytes");
+
+      free(bytes);
+      return NULL;
+    }
+  }
+
+  return bytes;
 }
 
 u16 read_u16(ByteCodeLoader *loader) {
@@ -59,13 +92,12 @@ u16 read_u16(ByteCodeLoader *loader) {
 
       return result;
     } else {
-      utarray_push_back(loader->error_messages,
-                        "error occurs when reading u16");
+      append_error(loader, "error occurs when reading the second byte of u16");
 
       return 0;
     }
   } else {
-    utarray_push_back(loader->error_messages, "error occurs when reading u16");
+    append_error(loader, "error occurs when reading the first byte of u16");
 
     return 0;
   }
@@ -82,13 +114,112 @@ i32 read_i32(ByteCodeLoader *loader) {
     if (peek != EOF) {
       result = result + (((i32)peek) << (8 * (4 - 1 - i)));
     } else {
-      utarray_push_back(loader->error_messages,
-                        "error occurs when reading i32");
+      append_error(loader, "error occurs when reading i32");
+
       return 0;
     }
   }
 
   return result;
+}
+
+i64 read_i64(ByteCodeLoader *loader) {
+  i64 result;
+  int peek;
+  int i;
+
+  result = 0;
+  for (i = 0; i < sizeof(i64); i++) {
+    peek = fgetc(loader->file);
+    if (peek != EOF) {
+      result = result + (((i64)peek) << (8 * (8 - 1 - i)));
+    } else {
+      append_error(loader, "error occurs when reading i64");
+
+      return 0;
+    }
+  }
+
+  return result;
+}
+
+f32 read_f32(ByteCodeLoader *loader) {
+  static BOOLEAN bits[sizeof(f32) * 8];
+  BOOLEAN *bit_ptr;
+  int i;
+  int j;
+  Byte *bytes;
+  Byte bit;
+
+  bit_ptr = &(bits[0]);
+  bytes = read_bytes(loader, sizeof(f32));
+  if (loader->error_messages) {
+    append_error(loader, "error occurs when reading f32");
+
+    return 0;
+  }
+  for (i = 0; i < sizeof(f32); i++) {
+    bit = bytes[i];
+    for (j = 0; j < 8; j++) {
+      *(bit_ptr) = bit % 2;
+      bit = bit / 2;
+      bit_ptr++;
+    }
+  }
+
+  int sign = bits[0] ? (-1) : (+1);
+  int exponent = 0;
+  for (i = 0; i < 8; i++) {
+    exponent = exponent + bits[1 + i] * (1 << (8 - 1 - i));
+  }
+  exponent = exponent - 127;
+  f32 mantissa = 1.0;
+  f32 cur = 0.5;
+  for (i = 0; i < 23; i++) {
+    mantissa = mantissa + bits[1 + 8 + i] * cur;
+    cur = cur / 2;
+  }
+  return sign * ldexp(mantissa, exponent);
+}
+
+f64 read_f64(ByteCodeLoader *loader) {
+  static BOOLEAN bits[sizeof(f64) * 8];
+  BOOLEAN *bit_ptr;
+  int i;
+  int j;
+  Byte *bytes;
+  Byte bit;
+
+  bit_ptr = &(bits[0]);
+  bytes = read_bytes(loader, sizeof(f64));
+  if (loader->error_messages) {
+    append_error(loader, "error occurs when reading f64");
+
+    return 0;
+  }
+
+  for (i = 0; i < sizeof(f64); i++) {
+    bit = bytes[i];
+    for (j = 0; j < 8; j++) {
+      *(bit_ptr) = bit % 2;
+      bit = bit / 2;
+      bit_ptr++;
+    }
+  }
+
+  int sign = bits[0] ? (-1) : (+1);
+  int exponent = 0;
+  for (i = 0; i < 11; i++) {
+    exponent = exponent + bits[1 + i] * (1 << (11 - 1 - i));
+  }
+  exponent = exponent - 1023;
+  f64 mantissa = 1.0;
+  f64 cur = 0.5;
+  for (i = 0; i < 52; i++) {
+    mantissa = mantissa + bits[1 + 11 + i] * cur;
+    cur = cur / 2;
+  }
+  return sign * ldexp(mantissa, exponent);
 }
 
 String *read_short_string(ByteCodeLoader *loader) {
@@ -99,8 +230,8 @@ String *read_short_string(ByteCodeLoader *loader) {
 
   length = read_byte(loader);
   if (loader->error_messages) {
-    utarray_push_back(loader->error_messages,
-                      "fail to read the length of the string");
+    append_error(loader, "fail to read the length of the string");
+
     return NULL;
   } else {
     result = malloc(sizeof(String));
@@ -112,8 +243,9 @@ String *read_short_string(ByteCodeLoader *loader) {
       if (peek != EOF) {
         result->characters[i] = (char)peek;
       } else {
-        utarray_push_back(loader->error_messages, "fail to read the string");
+        append_error(loader, "fail to read the string");
         free_string(result);
+
         return NULL;
       }
     }
@@ -122,145 +254,196 @@ String *read_short_string(ByteCodeLoader *loader) {
   }
 }
 
-void load_function(ByteCodeLoader *loader, Function *function) {
+void load_function(Program *program, ByteCodeLoader *loader,
+                   Function *function) {
   String *name;
   u16 code_length;
   int i;
   int peek;
 
-  name = read_short_string(loader);
-  if (loader->error_messages) {
-    utarray_push_back(loader->error_messages,
-                      "fail to read the name of the function");
-    return;
-  } else {
-    code_length = read_u16(loader);
-    if (loader->error_messages) {
-      utarray_push_back(loader->error_messages,
-                        "fail to read the code length of the function");
-      free_string(name);
-      return;
-    } else {
-      function->name = name;
-      function->code_length = code_length;
-      function->code = malloc(sizeof(Byte));
-      for (i = 0; i < function->code_length; i++) {
-        peek = fgetc(loader->file);
-        if (peek != EOF) {
-          function->code[i] = (char)peek;
-        } else {
-          utarray_push_back(loader->error_messages,
-                            "fail to read function body code");
-          free_string(function->name);
-          free(function->code);
-          function->name = NULL;
-          function->code = NULL;
-          return;
-        }
-      }
-      return;
+  init_function(function);
+
+  function->name = read_short_string(loader);
+  RAISE_IF_ANY_LOADING_ERROR(loader, "fail to read the name of the function");
+
+  function->args_size = read_byte(loader);
+  RAISE_IF_ANY_LOADING_ERROR(loader,
+                             "fail to read the argument size of the function");
+
+  function->locals = read_byte(loader);
+  RAISE_IF_ANY_LOADING_ERROR(loader,
+                             "fail to read the local space of the function");
+
+  function->args_size = read_byte(loader);
+  RAISE_IF_ANY_LOADING_ERROR(loader,
+                             "fail to read the argument size of the function");
+
+  function->stack = read_byte(loader);
+  RAISE_IF_ANY_LOADING_ERROR(loader,
+                             "fail to read the stack size of the function");
+
+  function->code_length = read_u16(loader);
+  RAISE_IF_ANY_LOADING_ERROR(loader,
+                             "fail to read the code length of the function");
+
+  function->code = read_bytes(loader, function->code_length);
+  RAISE_IF_ANY_LOADING_ERROR(loader, "fail to read function body code");
+
+  function->constant_pool_size = read_byte(loader);
+  RAISE_IF_ANY_LOADING_ERROR(loader,
+                             "fail to read the size of the constant pool");
+
+  function->constant_pool =
+      malloc(sizeof(Constant) * function->constant_pool_size);
+
+  for (i = 0; i < function->constant_pool_size; i++) {
+    peek = read_byte(loader);
+    RAISE_IF_ANY_LOADING_ERROR(loader, "fail to read the constant pool kind");
+
+    switch (peek) {
+    case CONSTANT_KIND_I32: {
+      function->constant_pool[i].kind = CONSTANT_KIND_I32;
+      function->constant_pool[i].u.i32_v = read_i32(loader);
+      break;
     }
+    case CONSTANT_KIND_I64: {
+      function->constant_pool[i].kind = CONSTANT_KIND_I64;
+      function->constant_pool[i].u.i64_v = read_i64(loader);
+      break;
+    }
+    case CONSTANT_KIND_F32: {
+      function->constant_pool[i].kind = CONSTANT_KIND_F32;
+      function->constant_pool[i].u.f32_v = read_f32(loader);
+      break;
+    }
+    case CONSTANT_KIND_F64: {
+      function->constant_pool[i].kind = CONSTANT_KIND_F64;
+      function->constant_pool[i].u.f64_v = read_f64(loader);
+      break;
+    }
+    case CONSTANT_KIND_STRING: {
+      function->constant_pool[i].kind = CONSTANT_KIND_STRING;
+      function->constant_pool[i].u.obj_v =
+          wrap_string_into_gc_object(read_short_string(loader));
+      break;
+    }
+    case CONSTANT_KIND_FUNCTION: {
+      function->constant_pool[i].kind = CONSTANT_KIND_FUNCTION;
+      function->constant_pool[i].u.func_v =
+          &(program->functions[read_byte(loader)]);
+      break;
+    }
+    case CONSTANT_KIND_GLOBAL_VARIABLE: {
+      function->constant_pool[i].kind = CONSTANT_KIND_FUNCTION;
+      function->constant_pool[i].u.global_variable_v =
+          &(program->global_variables[read_byte(loader)]);
+      break;
+    }
+    /*
+    case CONSTANT_KIND_GLOBAL_VARIABLE: {
+      function->constant_pool[i].kind = CONSTANT_KIND_FUNCTION;
+      function->constant_pool[i].u.native_func_v =
+          &(program->native_library_handlers[read_byte(loader)]);
+      break;
+    }
+    */
+    case CONSTANT_KIND_STRUCTURE_META_DATA: {
+      function->constant_pool[i].kind = CONSTANT_KIND_STRUCTURE_META_DATA;
+      function->constant_pool[i].u.struct_meta_data =
+          &(program->structures_meta_data[read_byte(loader)]);
+      break;
+    }
+    }
+    RAISE_IF_ANY_LOADING_ERROR(loader,
+                               "error occurs when loading constant pool");
   }
 }
 
-void load_module(ByteCodeLoader *loader, Module *module) {
-  u16 function_count;
-  String *name;
-  int i;
-  int j;
+void load_global_variable(Program *program, ByteCodeLoader *loader,
+                          GlobalVariable *global_variable) {
+  i32 initializer_offset;
 
-  name = read_short_string(loader);
-  if (loader->error_messages) {
-    utarray_push_back(loader->error_messages,
-                      "fail to read the name of the module");
-    return;
+  global_variable->name = read_short_string(loader);
+  RAISE_IF_ANY_LOADING_ERROR(loader, "fail to read the global variable name");
+
+  initializer_offset = read_i32(loader);
+  RAISE_IF_ANY_LOADING_ERROR(loader, "fail to read the initializer offset");
+
+  if (initializer_offset >= 0 && initializer_offset < program->function_count) {
+    global_variable->initializer = &(program->functions[initializer_offset]);
   } else {
-    function_count = read_u16(loader);
-    if (loader->error_messages) {
-      utarray_push_back(loader->error_messages,
-                        "fail to read the count of functions in the module");
-      free_string(name);
-      return;
-    } else {
-      module->name = name;
-      module->function_count = function_count;
-      module->functions = malloc(sizeof(Function));
+    append_error(loader, "initializer offset not in the range");
 
-      for (i = 0; i < function_count; i++) {
-        load_function(loader, &(module->functions[i]));
-        if (loader->error_messages) {
-          utarray_push_back(loader->error_messages,
-                            "fail to load a function in the module");
-          for (j = 0; j < i; j++) {
-            free_string(module->functions[j].name);
-            free(module->functions[j].code);
-            module->functions[i].name = NULL;
-            module->functions[i].code = NULL;
-          }
-          free(module->functions);
-          free_string(module->name);
-          module->functions = NULL;
-          module->name = NULL;
-          return;
-        }
-      }
-      return;
-    }
+    return;
   }
 }
 
-Program *read_byte_code_file(ByteCodeLoader *loader) {
-  Program *program;
-  u16 entry_module;
-  u16 entry_function;
-  u16 module_count;
+void load_structure(Program *program, ByteCodeLoader *loader,
+                    StructureMetaData *structure_meta) {
   int i;
-  int j;
-  int k;
 
-  entry_module = read_u16(loader);
-  if (loader->error_messages) {
-    utarray_push_back(loader->error_messages,
-                      "fail to read the entry module offset");
-    return NULL;
-  } else {
-    entry_function = read_u16(loader);
-    if (loader->error_messages) {
-      utarray_push_back(loader->error_messages,
-                        "fail to read the entry function offset");
-      return NULL;
-    } else {
-      module_count = read_u16(loader);
-      if (loader->error_messages) {
-        utarray_push_back(loader->error_messages,
-                          "fail to read the count of modules");
-        return NULL;
-      } else {
-        /* TO DO */
-        program = create_program(loader->file_name, module_count, 0, 0, 0, 0);
-        /*
-        for (i = 0; i < module_count; i++) {
-          load_module(loader, &(program->modules[i]));
-          if (loader->error_messages) {
-            utarray_push_back(loader->error_messages, "fail to read module");
-            for (j = 0; j < i; j++) {
-              for (k = 0; k < program->modules[j].function_count; k++) {
-                free(program->modules[j].functions[k].code);
-                free_string(program->modules[j].functions[k].name);
-              }
-              free(program->modules[j].functions);
-              free_string(program->modules[j].name);
-            }
-            free(program->modules);
-            free(program->file_name);
-            return NULL;
-          }
-        }
-        */
-      }
-    }
-    return program;
+  structure_meta->name = read_short_string(loader);
+  RAISE_IF_ANY_LOADING_ERROR(loader, "fail to read the name of the structure");
+
+  structure_meta->n_values = read_u16(loader);
+  RAISE_IF_ANY_LOADING_ERROR(loader,
+                             "fail to read the number of structure fields");
+
+  structure_meta->field_names =
+      malloc(sizeof(String *) * structure_meta->n_values);
+  for (i = 0; i < structure_meta->n_values; i++) {
+    structure_meta->field_names[i] = NULL;
   }
+  for (i = 0; i < structure_meta->n_values; i++) {
+    structure_meta->field_names[i] = read_short_string(loader);
+    RAISE_IF_ANY_LOADING_ERROR(loader,
+                               "fail to read the name of structure fields");
+  }
+}
+
+void read_byte_code_file(ByteCodeLoader *loader, Program *program) {
+  i32 global_variable_count;
+  i32 structure_count;
+  i32 function_count;
+  i32 native_library_count;
+  i32 entry_point;
+  int i;
+
+  global_variable_count = read_i32(loader);
+  RAISE_IF_ANY_LOADING_ERROR(loader, "fail to read the global variable count");
+
+  structure_count = read_i32(loader);
+  RAISE_IF_ANY_LOADING_ERROR(loader, "fail to read the structure count");
+
+  function_count = read_i32(loader);
+  RAISE_IF_ANY_LOADING_ERROR(loader, "fail to read the function count");
+
+  native_library_count = read_i32(loader);
+  RAISE_IF_ANY_LOADING_ERROR(loader, "fail to read the native library count");
+
+  entry_point = read_i32(loader);
+  RAISE_IF_ANY_LOADING_ERROR(loader, "fail to read the entry function offset");
+
+  program =
+      create_program(loader->file_name, global_variable_count, structure_count,
+                     function_count, native_library_count, entry_point);
+
+  for (i = 0; i < program->global_variable_count; i++) {
+    load_global_variable(program, loader, &(program->global_variables[i]));
+    RAISE_IF_ANY_LOADING_ERROR(loader, "fail to load the global variable");
+  }
+
+  for (i = 0; i < program->structure_count; i++) {
+    load_structure(program, loader, &(program->structures_meta_data[i]));
+    RAISE_IF_ANY_LOADING_ERROR(loader, "fail to load the structure");
+  }
+
+  for (i = 0; i < program->function_count; i++) {
+    load_function(program, loader, &(program->functions[i]));
+    RAISE_IF_ANY_LOADING_ERROR(loader, "fail to load the function");
+  }
+
+  /* native library count */
 }
 
 void view_program(Program *program) {
@@ -268,19 +451,6 @@ void view_program(Program *program) {
 
   printf("program file name: %s\n", program->file_name);
   /* TO DO: view global variables, functions and structures */
-}
-
-void view_module(Module *module) {
-  int i;
-  char *module_name;
-
-  module_name = str_to_c_str(module->name);
-  printf("module name: %s\n", module_name);
-  free(module_name);
-  printf("# of functions: %d\n", module->function_count);
-  for (i = 0; i < module->function_count; i++) {
-    view_function(&(module->functions[i]));
-  }
 }
 
 void view_function(Function *function) {
@@ -328,4 +498,16 @@ void view_byte_code(Byte *code, size_t code_length) {
       /* error */
     }
   }
+}
+
+void append_error(ByteCodeLoader *loader, const char *message) {
+  int str_length;
+  ErrorList *new_error;
+
+  str_length = strlen(message);
+  new_error = malloc(sizeof(ErrorList));
+  new_error->message = malloc(sizeof(char) * (str_length + 1));
+  strncpy(new_error->message, message, str_length + 1);
+  new_error->next = loader->error_messages;
+  loader->error_messages = new_error;
 }

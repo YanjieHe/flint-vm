@@ -9,6 +9,7 @@ void test_structure() {
   Program *program;
   Machine *machine;
   Function *function;
+  StructureMetaData *structure_meta_data;
   Byte code[] = {/* create a new structure */
                  NEW, 0,
                  /* copy the structure */
@@ -26,8 +27,13 @@ void test_structure() {
 
   program = create_program("Program", 0, 1, 1, 0, 0);
 
-  program->structures_meta_data[0].n_values = 2;
-  program->structures_meta_data[0].name = make_string("Structure");
+  structure_meta_data = &(program->structures_meta_data[0]);
+  structure_meta_data->n_values = 2;
+  structure_meta_data->name = make_string("Structure");
+  structure_meta_data->field_names =
+      malloc(sizeof(String *) * structure_meta_data->n_values);
+  structure_meta_data->field_names[0] = make_string("field_0");
+  structure_meta_data->field_names[1] = make_string("field_1");
 
   function = &(program->functions[0]);
   copy_byte_code(function, code, sizeof(code) / sizeof(Byte));
@@ -51,8 +57,8 @@ void test_structure() {
   ASSERT_EQUAL(machine->stack[machine->sp].obj_v->u.struct_v->values[0].i64_v,
                53);
   ASSERT_EQUAL(
-      abs(machine->stack[machine->sp].obj_v->u.struct_v->values[1].f64_v -
-          2.89) < 0.0000001,
+      fabs(machine->stack[machine->sp].obj_v->u.struct_v->values[1].f64_v -
+           2.89) < 0.0000001,
       TRUE);
   ASSERT_EQUAL(machine->machine_status, MACHINE_STOPPED);
 
@@ -64,6 +70,7 @@ void test_structure_get_field_value() {
   Program *program;
   Machine *machine;
   Function *function;
+  StructureMetaData *structure_meta_data;
   Byte code[] = {/* create a new structure */
                  NEW, 0,
                  /* copy the structure */
@@ -87,8 +94,13 @@ void test_structure_get_field_value() {
 
   program = create_program("Program", 0, 1, 1, 0, 0);
 
-  program->structures_meta_data[0].n_values = 2;
-  program->structures_meta_data[0].name = make_string("Structure");
+  structure_meta_data = &(program->structures_meta_data[0]);
+  structure_meta_data->n_values = 2;
+  structure_meta_data->name = make_string("Structure");
+  structure_meta_data->field_names =
+      malloc(sizeof(String *) * structure_meta_data->n_values);
+  structure_meta_data->field_names[0] = make_string("field_0");
+  structure_meta_data->field_names[1] = make_string("field_1");
 
   function = &(program->functions[0]);
   copy_byte_code(function, code, sizeof(code) / sizeof(Byte));
