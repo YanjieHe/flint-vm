@@ -15,7 +15,7 @@ Program *create_program_with_single_function(const char *name, Byte *code,
   Program *program;
   Function *entry;
 
-  program = create_program("Program", 0, 0, 1, 0, 0);
+  program = create_program("Program", 0, 0, 1, 0, 0, 0);
 
   entry = &(program->functions[0]);
   copy_byte_code(entry, code, code_length);

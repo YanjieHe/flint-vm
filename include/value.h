@@ -124,9 +124,14 @@ typedef struct Method {
 
 typedef struct Closure { Value *up_values; } Closure;
 
+typedef struct NativeLibrary {
+  String *library_path;
+  void *library_pointer;
+} NativeLibrary;
+
 typedef struct NativeFunction {
-  char *lib_path;
-  char *func_name;
+  NativeLibrary *library;
+  String *func_name;
   void *function_pointer;
   i32 args_size;
 } NativeFunction;
@@ -182,9 +187,13 @@ typedef struct Program {
   i32 function_count;
   Function *functions;
 
-  /* native library handlers */
+  /* native libraries */
   i32 native_library_count;
-  void **native_library_handlers;
+  NativeLibrary *native_libraries;
+
+  /* native functions */
+  i32 native_function_count;
+  NativeFunction *native_functions;
 
   /* entry */
   Function *entry;
@@ -192,7 +201,8 @@ typedef struct Program {
 
 Program *create_program(char *file_name, i32 global_variable_count,
                         i32 structure_count, i32 function_count,
-                        i32 native_library_count, i32 entry_point);
+                        i32 native_library_count, i32 native_function_count,
+                        i32 entry_point);
 void free_program(Program *program);
 String *make_string(const char *s);
 void free_string(String *str);

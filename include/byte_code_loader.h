@@ -30,6 +30,8 @@ String *read_short_string(ByteCodeLoader *loader);
 void load_function(Program* program, ByteCodeLoader *loader, Function *function);
 void load_global_variable(Program* program, ByteCodeLoader *loader, GlobalVariable *global_variable);
 void load_structure(Program* program, ByteCodeLoader *loader, StructureMetaData *structure_meta);
+void load_native_library(Program* program, ByteCodeLoader* loader, NativeLibrary* native_library);
+void load_native_function(Program* program, ByteCodeLoader* loader, NativeFunction* native_function);
 void read_byte_code_file(ByteCodeLoader *loader, Program* program);
 void view_program(Program *program);
 void view_function(Function *function);

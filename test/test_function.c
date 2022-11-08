@@ -3,7 +3,7 @@
 #include "opcode.h"
 #include "type.h"
 #include "byte_code_loader.h"
-#include "dlfcn.h"
+#include <dlfcn.h>
 
 void test_function_invocation() {
   Program *program;
@@ -18,7 +18,7 @@ void test_function_invocation() {
   Function *caller;
   Function *callee;
 
-  program = create_program("Program", 0, 0, 2, 0, 0);
+  program = create_program("Program", 0, 0, 2, 0, 0, 0);
 
   /* caller function */
   caller = &(program->functions[0]);
@@ -70,7 +70,7 @@ void test_function_return_i32() {
   Function *caller;
   Function *callee;
 
-  program = create_program("Program", 0, 0, 2, 0, 0);
+  program = create_program("Program", 0, 0, 2, 0, 0, 0);
 
   /* caller function */
   caller = &(program->functions[0]);
@@ -143,7 +143,7 @@ void test_function_factorial() {
   Function *caller;
   Function *callee;
 
-  program = create_program("Program", 0, 0, 2, 0, 0);
+  program = create_program("Program", 0, 0, 2, 0, 0, 0);
 
   /* caller function */
   caller = &(program->functions[0]);
@@ -188,25 +188,23 @@ void test_function_native_function_call() {
   NativeFunction *native_function;
   Byte code[] = {PUSH_STRING, 0, INVOKE_NATIVE_FUNCTION, 1, HALT};
 
-  program = create_program_with_single_function(__FUNCTION__, code,
-                                                sizeof(code) / sizeof(Byte));
+  program = create_program("Program", 0, 0, 1, 1, 1, 0);
+
   function = program->entry;
   function->constant_pool_size = 2;
   function->constant_pool =
       malloc(sizeof(Constant) * function->constant_pool_size);
-  function->constant_pool[0].u.obj_v = malloc(sizeof(GCObject));
-  function->constant_pool[0].u.obj_v->kind = GCOBJECT_KIND_STRING;
-  function->constant_pool[0].u.obj_v->u.str_v = make_string("Hello, World!");
-  function->constant_pool[1].u.native_func_v = malloc(sizeof(NativeFunction));
-  native_function = function->constant_pool[1].u.native_func_v;
+  function->constant_pool[0].u.obj_v =
+      wrap_string_into_gc_object(make_string("Hello, World!"));
+  copy_byte_code(function, code, sizeof(code) / sizeof(Byte));
+
+  native_function = &(program->native_functions[0]);
   native_function->args_size = 1;
-  program->native_library_count = 1;
-  program->native_library_handlers =
-      malloc(sizeof(void *) * program->native_library_count);
-  program->native_library_handlers[0] = dlopen(
+  program->native_libraries[0].library_pointer = dlopen(
       "../extensions/input-output/build/libflint-vm-input-output.so", RTLD_NOW);
   native_function->function_pointer =
-      dlsym(program->native_library_handlers[0], "FLINT_VM_println");
+      dlsym(program->native_libraries[0].library_pointer, "FLINT_VM_println");
+  function->constant_pool[1].u.native_func_v = native_function;
   ASSERT_NOT_EQUAL(native_function->function_pointer, NULL);
   machine = create_machine(100);
 
