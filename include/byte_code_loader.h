@@ -33,6 +33,7 @@ void load_structure(Program* program, ByteCodeLoader *loader, StructureMetaData 
 void load_native_library(Program* program, ByteCodeLoader* loader, NativeLibrary* native_library);
 void load_native_function(Program* program, ByteCodeLoader* loader, NativeFunction* native_function);
 void read_byte_code_file(ByteCodeLoader *loader, Program* program);
+
 void view_program(Program *program);
 void view_function(Function *function);
 void view_byte_code(Byte *code, size_t code_length);

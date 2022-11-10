@@ -37,6 +37,10 @@ def header_ending() -> str:
     return "\n".join(["#endif /* FLINT_VM_OP_CODE_H */"])
 
 
+def opcode_count(count: int) -> str:
+    return "#define OPCODE_COUNT " + str(count)
+
+
 def main() -> None:
     df = pd.read_csv("opcode.csv")
     df["op_type"].replace(np.nan, "", inplace=True)
@@ -44,6 +48,8 @@ def main() -> None:
 
     op_list = expand(df)
     print(header_beginning())
+    print(opcode_count(len(op_list)))
+    print()
     print(make_enum(op_list), end="\n\n")
     print(make_opcode_info_array(op_list), end="\n\n")
     print(header_ending())
