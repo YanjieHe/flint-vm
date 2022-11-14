@@ -5,22 +5,16 @@
 #include <math.h>
 #include <dlfcn.h>
 
-#define TWO_BYTES_TO_U16(BYTE1, BYTE2)                                         \
-  ((((uint16_t)BYTE1) << 8) + ((uint16_t)BYTE2))
-
-#define TWO_BYTES_TO_I16(BYTE1, BYTE2)                                         \
-  ((((int16_t)BYTE1) << 8) + ((int16_t)BYTE2))
-
 #define STOP_IF_ANY_LOADING_ERROR(LOADER, MESSAGE)                             \
   if ((LOADER)->error_messages) {                                              \
-    append_error(LOADER, (MESSAGE));                                           \
+    add_loading_error(LOADER, (MESSAGE));                                      \
                                                                                \
     return;                                                                    \
   }
 
 #define RETURN_NULL_IF_ANY_LOADING_ERROR(LOADER, MESSAGE)                      \
   if ((LOADER)->error_messages) {                                              \
-    append_error(LOADER, (MESSAGE));                                           \
+    add_loading_error(LOADER, (MESSAGE));                                      \
                                                                                \
     return NULL;                                                               \
   }
@@ -52,6 +46,12 @@ ByteCodeLoader *create_byte_code_loader(char *file_name) {
   }
 }
 
+void free_byte_code_loader(ByteCodeLoader *loader) {
+  fclose(loader->file);
+  free(loader->file_name);
+  free_error_list(loader->error_messages);
+}
+
 Byte read_byte(ByteCodeLoader *loader) {
   int peek;
 
@@ -59,7 +59,7 @@ Byte read_byte(ByteCodeLoader *loader) {
   if (peek != EOF) {
     return (Byte)peek;
   } else {
-    append_error(loader, "error occurs when reading byte");
+    add_loading_error(loader, "error occurs when reading byte");
 
     return 0;
   }
@@ -77,7 +77,7 @@ Byte *read_bytes(ByteCodeLoader *loader, i32 count) {
     if (peek != EOF) {
       bytes[i] = (Byte)peek;
     } else {
-      append_error(loader, "error occurs when reading bytes");
+      add_loading_error(loader, "error occurs when reading bytes");
 
       free(bytes);
       return NULL;
@@ -100,12 +100,14 @@ u16 read_u16(ByteCodeLoader *loader) {
 
       return result;
     } else {
-      append_error(loader, "error occurs when reading the second byte of u16");
+      add_loading_error(loader,
+                        "error occurs when reading the second byte of u16");
 
       return 0;
     }
   } else {
-    append_error(loader, "error occurs when reading the first byte of u16");
+    add_loading_error(loader,
+                      "error occurs when reading the first byte of u16");
 
     return 0;
   }
@@ -122,7 +124,7 @@ i32 read_i32(ByteCodeLoader *loader) {
     if (peek != EOF) {
       result = result + (((i32)peek) << (8 * (4 - 1 - i)));
     } else {
-      append_error(loader, "error occurs when reading i32");
+      add_loading_error(loader, "error occurs when reading i32");
 
       return 0;
     }
@@ -142,7 +144,7 @@ i64 read_i64(ByteCodeLoader *loader) {
     if (peek != EOF) {
       result = result + (((i64)peek) << (8 * (8 - 1 - i)));
     } else {
-      append_error(loader, "error occurs when reading i64");
+      add_loading_error(loader, "error occurs when reading i64");
 
       return 0;
     }
@@ -162,7 +164,7 @@ f32 read_f32(ByteCodeLoader *loader) {
   bit_ptr = &(bits[0]);
   bytes = read_bytes(loader, sizeof(f32));
   if (loader->error_messages) {
-    append_error(loader, "error occurs when reading f32");
+    add_loading_error(loader, "error occurs when reading f32");
 
     return 0;
   }
@@ -201,7 +203,7 @@ f64 read_f64(ByteCodeLoader *loader) {
   bit_ptr = &(bits[0]);
   bytes = read_bytes(loader, sizeof(f64));
   if (loader->error_messages) {
-    append_error(loader, "error occurs when reading f64");
+    add_loading_error(loader, "error occurs when reading f64");
 
     return 0;
   }
@@ -238,7 +240,7 @@ String *read_string(ByteCodeLoader *loader) {
 
   length = read_u16(loader);
   if (loader->error_messages) {
-    append_error(loader, "fail to read the length of the string");
+    add_loading_error(loader, "fail to read the length of the string");
 
     return NULL;
   } else {
@@ -251,7 +253,7 @@ String *read_string(ByteCodeLoader *loader) {
       if (peek != EOF) {
         result->characters[i] = (char)peek;
       } else {
-        append_error(loader, "fail to read the string");
+        add_loading_error(loader, "fail to read the string");
         free_string(result);
 
         return NULL;
@@ -374,7 +376,7 @@ void load_global_variable(Program *program, ByteCodeLoader *loader,
   if (initializer_offset >= 0 && initializer_offset < program->function_count) {
     global_variable->initializer = &(program->functions[initializer_offset]);
   } else {
-    append_error(loader, "initializer offset not in the range");
+    add_loading_error(loader, "initializer offset not in the range");
 
     return;
   }
@@ -536,35 +538,11 @@ void view_function(Function *function) {
   printf("\n");
 }
 
-void view_byte_code(Byte *code, size_t code_length) {
-  size_t i;
-  Byte op;
-  const char *op_name;
-
-  i = 0;
-  while (i < code_length) {
-    op = code[i];
-    op_name = opcode_info[op][0];
-    printf("%ld: ", i);
-    if (strcmp(opcode_info[op][1], "") == 0) {
-      printf("%s\n", op_name);
-      i++;
-    } else if (strcmp(opcode_info[op][1], "b") == 0) {
-      printf("%s  %d\n", op_name, code[i + 1]);
-      i += 2;
-    } else if (strcmp(opcode_info[op][1], "u") == 0) {
-      printf("%s  %d\n", op_name, TWO_BYTES_TO_U16(code[i + 1], code[i + 2]));
-      i += 3;
-    } else if (strcmp(opcode_info[op][1], "s") == 0) {
-      printf("%s  %d\n", op_name, TWO_BYTES_TO_I16(code[i + 1], code[i + 2]));
-      i += 3;
-    } else {
-      /* error */
-    }
-  }
+void add_loading_error(ByteCodeLoader *loader, const char *message) {
+  append_error_to_error_list(&(loader->error_messages), message);
 }
 
-void append_error(ByteCodeLoader *loader, const char *message) {
+void append_error_to_error_list(ErrorList **error_list, const char *message) {
   int str_length;
   ErrorList *new_error;
 
@@ -572,16 +550,29 @@ void append_error(ByteCodeLoader *loader, const char *message) {
   new_error = malloc(sizeof(ErrorList));
   new_error->message = malloc(sizeof(char) * (str_length + 1));
   strncpy(new_error->message, message, str_length + 1);
-  new_error->next = loader->error_messages;
-  loader->error_messages = new_error;
+  new_error->next = (*error_list);
+  (*error_list) = new_error;
 }
 
-void show_errors(ByteCodeLoader *loader) {
+void show_errors(ErrorList *error_list) {
   ErrorList *current_error;
 
-  current_error = loader->error_messages;
+  current_error = error_list;
   while (current_error != NULL) {
     printf("%s\n", current_error->message);
     current_error = current_error->next;
+  }
+}
+
+void free_error_list(ErrorList *error_list) {
+  ErrorList *current_error;
+  ErrorList *next_error;
+
+  current_error = error_list;
+  while (current_error != NULL) {
+    free(current_error->message);
+    next_error = current_error;
+    free(current_error);
+    current_error = next_error;
   }
 }

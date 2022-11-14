@@ -4,6 +4,12 @@
 #include "value.h"
 #include <stdio.h>
 
+#define TWO_BYTES_TO_U16(BYTE1, BYTE2)                                         \
+  ((((uint16_t)BYTE1) << 8) + ((uint16_t)BYTE2))
+
+#define TWO_BYTES_TO_I16(BYTE1, BYTE2)                                         \
+  ((int16_t)((((uint16_t)BYTE1) << 8) + ((uint16_t)BYTE2)))
+
 typedef struct ErrorList {
   char *message;
   struct ErrorList *next;
@@ -17,6 +23,7 @@ typedef struct ByteCodeLoader {
 } ByteCodeLoader;
 
 ByteCodeLoader *create_byte_code_loader(char *file_name);
+void free_byte_code_loader(ByteCodeLoader *loader);
 
 Byte read_byte(ByteCodeLoader *loader);
 Byte *read_bytes(ByteCodeLoader *loader, i32 count);
@@ -37,12 +44,14 @@ void load_native_library(Program *program, ByteCodeLoader *loader,
                          NativeLibrary *native_library);
 void load_native_function(Program *program, ByteCodeLoader *loader,
                           NativeFunction *native_function);
-Program* read_byte_code_file(ByteCodeLoader *loader);
+Program *read_byte_code_file(ByteCodeLoader *loader);
 
 void view_program(Program *program);
 void view_function(Function *function);
 void view_byte_code(Byte *code, size_t code_length);
-void append_error(ByteCodeLoader *loader, const char *message);
-void show_errors(ByteCodeLoader* loader);
+void add_loading_error(ByteCodeLoader *loader, const char *message);
+void append_error_to_error_list(ErrorList **error_list, const char *message);
+void show_errors(ErrorList *error_list);
+void free_error_list(ErrorList *error_list);
 
 #endif /* FLINT_VM_BYTE_CODE_LOADER_H */

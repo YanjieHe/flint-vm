@@ -3,6 +3,7 @@
 #include "opcode.h"
 #include "type.h"
 #include "byte_code_loader.h"
+#include "byte_code_printer.h"
 
 void test_jump() {
   Program *program;
@@ -32,7 +33,7 @@ void test_jump() {
   free_machine(machine);
 }
 
-void test_loop(){
+void test_loop() {
   Program *program;
   Machine *machine;
   ByteCodeLoader *loader;
@@ -41,7 +42,7 @@ void test_loop(){
   ASSERT_NOT_EQUAL(loader, NULL);
 
   program = read_byte_code_file(loader);
-  show_errors(loader);
+  show_errors(loader->error_messages);
   ASSERT_NOT_EQUAL(program, NULL);
   ASSERT_EQUAL(loader->error_messages, NULL);
 
@@ -49,11 +50,10 @@ void test_loop(){
   load_program(machine, program);
   run_machine(machine);
 
-  ASSERT_EQUAL(machine->stack[machine->sp].i64_v, 5050);
+  ASSERT_EQUAL(machine->stack[machine->sp].i64_v, 5050L);
   ASSERT_EQUAL(machine->machine_status, MACHINE_STOPPED);
 
-  free(loader->file_name);
-  fclose(loader->file);
+  free_byte_code_loader(loader);
   free_program(program);
   free_machine(machine);
 }

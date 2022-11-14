@@ -34,7 +34,7 @@ void test_subtract() {
   ASSERT_NOT_EQUAL(loader, NULL);
 
   program = read_byte_code_file(loader);
-  show_errors(loader);
+  show_errors(loader->error_messages);
   ASSERT_NOT_EQUAL(program, NULL);
   ASSERT_EQUAL(loader->error_messages, NULL);
 
@@ -45,8 +45,7 @@ void test_subtract() {
   ASSERT_EQUAL(machine->stack[machine->sp].i32_v, 10464);
   ASSERT_EQUAL(machine->machine_status, MACHINE_STOPPED);
 
-  free(loader->file_name);
-  fclose(loader->file);
+  free_byte_code_loader(loader);
   free_program(program);
   free_machine(machine);
 }
