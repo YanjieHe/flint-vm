@@ -90,12 +90,18 @@ def print_generated_c_code(op_list: List[OpInfo]) -> None:
     print(header_ending())
 
 
-def main() -> None:
-    df = pd.read_csv("opcode.csv")
+def load_opcode_data_frame(path: str) -> pd.DataFrame:
+    df = pd.read_csv(path)
     df["op_type"].replace(np.nan, "", inplace=True)
     df["with_types"].replace(np.nan, "", inplace=True)
 
+    return df
+
+
+def main() -> None:
+    df = load_opcode_data_frame("opcode.csv")
     op_list = expand(df)
+
     # print_generated_c_code(op_list)
     print(make_python_opcode_definition(op_list))
 
