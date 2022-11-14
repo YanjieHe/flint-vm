@@ -73,8 +73,20 @@ typedef struct Array {
   } u;
 } Array;
 
+typedef enum ConstantKind {
+  CONSTANT_KIND_I32 = 0,
+  CONSTANT_KIND_I64 = 1,
+  CONSTANT_KIND_F32 = 2,
+  CONSTANT_KIND_F64 = 3,
+  CONSTANT_KIND_STRING = 4,
+  CONSTANT_KIND_FUNCTION = 5,
+  CONSTANT_KIND_STRUCTURE_META_DATA = 6,
+  CONSTANT_KIND_GLOBAL_VARIABLE = 7,
+  CONSTANT_KIND_NATIVE_FUNCTION = 8
+} ConstantKind;
+
 typedef struct Constant {
-  i32 type;
+  ConstantKind kind;
   union {
     i32 i32_v;
     i64 i64_v;
@@ -112,9 +124,14 @@ typedef struct Method {
 
 typedef struct Closure { Value *up_values; } Closure;
 
+typedef struct NativeLibrary {
+  String *library_path;
+  void *library_pointer;
+} NativeLibrary;
+
 typedef struct NativeFunction {
-  char *lib_path;
-  char *func_name;
+  NativeLibrary *library;
+  String *func_name;
   void *function_pointer;
   i32 args_size;
 } NativeFunction;
@@ -147,23 +164,6 @@ typedef struct CallInfo {
   ((sizeof(CallInfo) / sizeof(Value)) +                                        \
    ((sizeof(CallInfo) % sizeof(Value)) ? 1 : 0))
 
-typedef struct Module {
-  /* module name */
-  String *name;
-
-  /* constant pool */
-  i32 constant_pool_size;
-  Constant *constant_pool;
-
-  /* functions */
-  i32 function_count;
-  Function *functions;
-
-  /* structures */
-  i32 structure_count;
-  Structure *structures;
-} Module;
-
 typedef struct GlobalVariable {
   String *name;
   Value value;
@@ -187,9 +187,13 @@ typedef struct Program {
   i32 function_count;
   Function *functions;
 
-  /* native library handlers */
+  /* native libraries */
   i32 native_library_count;
-  void **native_library_handlers;
+  NativeLibrary *native_libraries;
+
+  /* native functions */
+  i32 native_function_count;
+  NativeFunction *native_functions;
 
   /* entry */
   Function *entry;
@@ -197,12 +201,14 @@ typedef struct Program {
 
 Program *create_program(char *file_name, i32 global_variable_count,
                         i32 structure_count, i32 function_count,
-                        i32 native_library_count, i32 entry_point);
+                        i32 native_library_count, i32 native_function_count,
+                        i32 entry_point);
 void free_program(Program *program);
-void init_module(Module *module);
 String *make_string(const char *s);
 void free_string(String *str);
 char *str_to_c_str(String *str);
 void free_gc_object(GCObject *gc_object);
+void init_function(Function *function);
+GCObject *wrap_string_into_gc_object(String *str);
 
 #endif /* VALUE_H */

@@ -16,7 +16,7 @@ void test_global_variable() {
   Function *entry;
   Function *initializer;
 
-  program = create_program("Program", 1, 0, 2, 0, 0);
+  program = create_program("Program", 1, 0, 2, 0, 0, 0);
 
   /* entry function */
   entry = &(program->functions[0]);

@@ -4,6 +4,7 @@
 #include "machine.h"
 #include <stdio.h>
 #include "test.h"
+#include "byte_code_loader.h"
 
 void test_add() {
   Program *program;
@@ -20,6 +21,32 @@ void test_add() {
   ASSERT_EQUAL(machine->stack[machine->sp].i32_v, 527);
   ASSERT_EQUAL(machine->machine_status, MACHINE_STOPPED);
 
+  free_program(program);
+  free_machine(machine);
+}
+
+void test_subtract() {
+  Program *program;
+  Machine *machine;
+  ByteCodeLoader *loader;
+
+  loader = create_byte_code_loader("byte_code/subtract");
+  ASSERT_NOT_EQUAL(loader, NULL);
+
+  program = read_byte_code_file(loader);
+  show_errors(loader);
+  ASSERT_NOT_EQUAL(program, NULL);
+  ASSERT_EQUAL(loader->error_messages, NULL);
+
+  machine = create_machine(100);
+  load_program(machine, program);
+  run_machine(machine);
+
+  ASSERT_EQUAL(machine->stack[machine->sp].i32_v, 10464);
+  ASSERT_EQUAL(machine->machine_status, MACHINE_STOPPED);
+
+  free(loader->file_name);
+  fclose(loader->file);
   free_program(program);
   free_machine(machine);
 }

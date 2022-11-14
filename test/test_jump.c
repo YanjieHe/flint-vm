@@ -31,3 +31,29 @@ void test_jump() {
   free_program(program);
   free_machine(machine);
 }
+
+void test_loop(){
+  Program *program;
+  Machine *machine;
+  ByteCodeLoader *loader;
+
+  loader = create_byte_code_loader("byte_code/loop");
+  ASSERT_NOT_EQUAL(loader, NULL);
+
+  program = read_byte_code_file(loader);
+  show_errors(loader);
+  ASSERT_NOT_EQUAL(program, NULL);
+  ASSERT_EQUAL(loader->error_messages, NULL);
+
+  machine = create_machine(100);
+  load_program(machine, program);
+  run_machine(machine);
+
+  ASSERT_EQUAL(machine->stack[machine->sp].i64_v, 5050);
+  ASSERT_EQUAL(machine->machine_status, MACHINE_STOPPED);
+
+  free(loader->file_name);
+  fclose(loader->file);
+  free_program(program);
+  free_machine(machine);
+}

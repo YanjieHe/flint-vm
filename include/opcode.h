@@ -1,6 +1,8 @@
 #ifndef FLINT_VM_OP_CODE_H
 #define FLINT_VM_OP_CODE_H
 
+#define OPCODE_COUNT 148
+
 enum OpCode {
 	HALT = 0,
 	PUSH_I32_0 = 1,

@@ -5,7 +5,8 @@
 
 Program *create_program(char *file_name, i32 global_variable_count,
                         i32 structure_count, i32 function_count,
-                        i32 native_library_count, i32 entry_point) {
+                        i32 native_library_count, i32 native_function_count,
+                        i32 entry_point) {
   Program *program;
   int file_name_len;
   int i;
@@ -39,6 +40,8 @@ Program *create_program(char *file_name, i32 global_variable_count,
 
   for (i = 0; i < program->structure_count; i++) {
     program->structures_meta_data[i].name = NULL;
+    program->structures_meta_data[i].n_values = 0;
+    program->structures_meta_data[i].field_names = NULL;
   }
 
   /* functions */
@@ -46,18 +49,33 @@ Program *create_program(char *file_name, i32 global_variable_count,
   program->functions = malloc(sizeof(Function) * function_count);
 
   for (i = 0; i < program->function_count; i++) {
-    program->functions[i].code = NULL;
-    program->functions[i].constant_pool = NULL;
+    init_function(&(program->functions[i]));
   }
 
   /* native libraries */
   program->native_library_count = native_library_count;
-  program->native_library_handlers =
-      native_library_count == 0 ? NULL
-                                : malloc(sizeof(void *) * native_library_count);
+  program->native_libraries =
+      native_library_count == 0
+          ? NULL
+          : malloc(sizeof(NativeLibrary) * native_library_count);
 
   for (i = 0; i < program->native_library_count; i++) {
-    program->native_library_handlers[i] = NULL;
+    program->native_libraries[i].library_path = NULL;
+    program->native_libraries[i].library_pointer = NULL;
+  }
+
+  /* native functions */
+  program->native_function_count = native_function_count;
+  program->native_functions =
+      native_function_count == 0
+          ? NULL
+          : malloc(sizeof(NativeFunction) * native_function_count);
+
+  for (i = 0; i < program->native_function_count; i++) {
+    program->native_functions[i].func_name = NULL;
+    program->native_functions[i].args_size = 0;
+    program->native_functions[i].function_pointer = NULL;
+    program->native_functions[i].library = NULL;
   }
 
   /* entry */
@@ -68,6 +86,7 @@ Program *create_program(char *file_name, i32 global_variable_count,
 
 void free_program(Program *program) {
   int i;
+  int j;
   Function *function;
 
   free(program->file_name);
@@ -81,6 +100,10 @@ void free_program(Program *program) {
   /* structures */
   for (i = 0; i < program->structure_count; i++) {
     free_string(program->structures_meta_data[i].name);
+    for (j = 0; j < program->structures_meta_data[i].n_values; j++) {
+      free_string(program->structures_meta_data[i].field_names[j]);
+    }
+    free(program->structures_meta_data[i].field_names);
   }
   free(program->structures_meta_data);
 
@@ -88,6 +111,7 @@ void free_program(Program *program) {
   for (i = 0; i < program->function_count; i++) {
     function = &(program->functions[i]);
     free(function->constant_pool);
+    /* TO DO: free constant pool */
     free_string(function->name);
     free(function->code);
   }
@@ -95,21 +119,19 @@ void free_program(Program *program) {
 
   /* native libraries */
   for (i = 0; i < program->native_library_count; i++) {
-    if (program->native_library_handlers[i]) {
-      dlclose(program->native_library_handlers[i]);
-    }
+    free_string(program->native_libraries[i].library_path);
+    dlclose(program->native_libraries[i].library_pointer);
   }
-  free(program->native_library_handlers);
+  free(program->native_libraries);
+
+  /* native functions */
+  for (i = 0; i < program->native_function_count; i++) {
+    free_string(program->native_functions[i].func_name);
+  }
+  free(program->native_functions);
 
   /* free program itself */
   free(program);
-}
-
-void init_module(Module *module) {
-  module->constant_pool = NULL;
-  module->functions = NULL;
-  module->name = NULL;
-  module->structures = NULL;
 }
 
 String *make_string(const char *s) {
@@ -163,4 +185,26 @@ void free_gc_object(GCObject *gc_object) {
     free(gc_object->u.struct_v);
   }
   free(gc_object);
+}
+
+void init_function(Function *function) {
+  function->args_size = 0;
+  function->code = NULL;
+  function->code_length = 0;
+  function->constant_pool = NULL;
+  function->constant_pool_size = 0;
+  function->locals = 0;
+  function->name = NULL;
+  function->stack = 0;
+}
+
+GCObject *wrap_string_into_gc_object(String *str) {
+  GCObject *obj;
+
+  obj = malloc(sizeof(GCObject));
+  obj->kind = GCOBJECT_KIND_STRING;
+  obj->next = NULL;
+  obj->u.str_v = str;
+
+  return obj;
 }
