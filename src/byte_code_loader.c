@@ -11,11 +11,18 @@
 #define TWO_BYTES_TO_I16(BYTE1, BYTE2)                                         \
   ((((int16_t)BYTE1) << 8) + ((int16_t)BYTE2))
 
-#define RAISE_IF_ANY_LOADING_ERROR(LOADER, MESSAGE)                            \
+#define STOP_IF_ANY_LOADING_ERROR(LOADER, MESSAGE)                             \
   if ((LOADER)->error_messages) {                                              \
     append_error(LOADER, (MESSAGE));                                           \
                                                                                \
     return;                                                                    \
+  }
+
+#define RETURN_NULL_IF_ANY_LOADING_ERROR(LOADER, MESSAGE)                      \
+  if ((LOADER)->error_messages) {                                              \
+    append_error(LOADER, (MESSAGE));                                           \
+                                                                               \
+    return NULL;                                                               \
   }
 
 /*
@@ -223,13 +230,13 @@ f64 read_f64(ByteCodeLoader *loader) {
   return sign * ldexp(mantissa, exponent);
 }
 
-String *read_short_string(ByteCodeLoader *loader) {
+String *read_string(ByteCodeLoader *loader) {
   String *result;
   Byte length;
   int i;
   int peek;
 
-  length = read_byte(loader);
+  length = read_u16(loader);
   if (loader->error_messages) {
     append_error(loader, "fail to read the length of the string");
 
@@ -264,42 +271,31 @@ void load_function(Program *program, ByteCodeLoader *loader,
 
   init_function(function);
 
-  function->name = read_short_string(loader);
-  RAISE_IF_ANY_LOADING_ERROR(loader, "fail to read the name of the function");
-
-  function->args_size = read_byte(loader);
-  RAISE_IF_ANY_LOADING_ERROR(loader,
-                             "fail to read the argument size of the function");
-
-  function->locals = read_byte(loader);
-  RAISE_IF_ANY_LOADING_ERROR(loader,
-                             "fail to read the local space of the function");
-
-  function->args_size = read_byte(loader);
-  RAISE_IF_ANY_LOADING_ERROR(loader,
-                             "fail to read the argument size of the function");
+  function->name = read_string(loader);
+  STOP_IF_ANY_LOADING_ERROR(loader, "fail to read the name of the function");
 
   function->stack = read_byte(loader);
-  RAISE_IF_ANY_LOADING_ERROR(loader,
-                             "fail to read the stack size of the function");
+  STOP_IF_ANY_LOADING_ERROR(loader,
+                            "fail to read the stack size of the function");
 
-  function->code_length = read_u16(loader);
-  RAISE_IF_ANY_LOADING_ERROR(loader,
-                             "fail to read the code length of the function");
+  function->locals = read_byte(loader);
+  STOP_IF_ANY_LOADING_ERROR(loader,
+                            "fail to read the local space of the function");
 
-  function->code = read_bytes(loader, function->code_length);
-  RAISE_IF_ANY_LOADING_ERROR(loader, "fail to read function body code");
+  function->args_size = read_byte(loader);
+  STOP_IF_ANY_LOADING_ERROR(loader,
+                            "fail to read the argument size of the function");
 
   function->constant_pool_size = read_byte(loader);
-  RAISE_IF_ANY_LOADING_ERROR(loader,
-                             "fail to read the size of the constant pool");
+  STOP_IF_ANY_LOADING_ERROR(loader,
+                            "fail to read the size of the constant pool");
 
   function->constant_pool =
       malloc(sizeof(Constant) * function->constant_pool_size);
 
   for (i = 0; i < function->constant_pool_size; i++) {
     peek = read_byte(loader);
-    RAISE_IF_ANY_LOADING_ERROR(loader, "fail to read the constant pool kind");
+    STOP_IF_ANY_LOADING_ERROR(loader, "fail to read the constant pool kind");
 
     switch (peek) {
     case CONSTANT_KIND_I32: {
@@ -325,7 +321,7 @@ void load_function(Program *program, ByteCodeLoader *loader,
     case CONSTANT_KIND_STRING: {
       function->constant_pool[i].kind = CONSTANT_KIND_STRING;
       function->constant_pool[i].u.obj_v =
-          wrap_string_into_gc_object(read_short_string(loader));
+          wrap_string_into_gc_object(read_string(loader));
       break;
     }
     case CONSTANT_KIND_FUNCTION: {
@@ -346,27 +342,34 @@ void load_function(Program *program, ByteCodeLoader *loader,
           &(program->structures_meta_data[read_i32(loader)]);
       break;
     }
-    case CONSTANT_KIND_NATIVE_FUNCTION:{
+    case CONSTANT_KIND_NATIVE_FUNCTION: {
       function->constant_pool[i].kind = CONSTANT_KIND_NATIVE_FUNCTION;
       function->constant_pool[i].u.native_func_v =
           &(program->native_functions[read_i32(loader)]);
       break;
     }
     }
-    RAISE_IF_ANY_LOADING_ERROR(loader,
-                               "error occurs when loading constant pool");
+    STOP_IF_ANY_LOADING_ERROR(loader,
+                              "error occurs when loading constant pool");
   }
+
+  function->code_length = read_u16(loader);
+  STOP_IF_ANY_LOADING_ERROR(loader,
+                            "fail to read the code length of the function");
+
+  function->code = read_bytes(loader, function->code_length);
+  STOP_IF_ANY_LOADING_ERROR(loader, "fail to read function body code");
 }
 
 void load_global_variable(Program *program, ByteCodeLoader *loader,
                           GlobalVariable *global_variable) {
   i32 initializer_offset;
 
-  global_variable->name = read_short_string(loader);
-  RAISE_IF_ANY_LOADING_ERROR(loader, "fail to read the global variable name");
+  global_variable->name = read_string(loader);
+  STOP_IF_ANY_LOADING_ERROR(loader, "fail to read the global variable name");
 
   initializer_offset = read_i32(loader);
-  RAISE_IF_ANY_LOADING_ERROR(loader, "fail to read the initializer offset");
+  STOP_IF_ANY_LOADING_ERROR(loader, "fail to read the initializer offset");
 
   if (initializer_offset >= 0 && initializer_offset < program->function_count) {
     global_variable->initializer = &(program->functions[initializer_offset]);
@@ -381,12 +384,12 @@ void load_structure(Program *program, ByteCodeLoader *loader,
                     StructureMetaData *structure_meta) {
   int i;
 
-  structure_meta->name = read_short_string(loader);
-  RAISE_IF_ANY_LOADING_ERROR(loader, "fail to read the name of the structure");
+  structure_meta->name = read_string(loader);
+  STOP_IF_ANY_LOADING_ERROR(loader, "fail to read the name of the structure");
 
   structure_meta->n_values = read_u16(loader);
-  RAISE_IF_ANY_LOADING_ERROR(loader,
-                             "fail to read the number of structure fields");
+  STOP_IF_ANY_LOADING_ERROR(loader,
+                            "fail to read the number of structure fields");
 
   structure_meta->field_names =
       malloc(sizeof(String *) * structure_meta->n_values);
@@ -394,9 +397,9 @@ void load_structure(Program *program, ByteCodeLoader *loader,
     structure_meta->field_names[i] = NULL;
   }
   for (i = 0; i < structure_meta->n_values; i++) {
-    structure_meta->field_names[i] = read_short_string(loader);
-    RAISE_IF_ANY_LOADING_ERROR(loader,
-                               "fail to read the name of structure fields");
+    structure_meta->field_names[i] = read_string(loader);
+    STOP_IF_ANY_LOADING_ERROR(loader,
+                              "fail to read the name of structure fields");
   }
 }
 
@@ -404,9 +407,9 @@ void load_native_library(Program *program, ByteCodeLoader *loader,
                          NativeLibrary *native_library) {
   char *lib_path;
 
-  native_library->library_path = read_short_string(loader);
-  RAISE_IF_ANY_LOADING_ERROR(loader,
-                             "fail to read the name of the native library");
+  native_library->library_path = read_string(loader);
+  STOP_IF_ANY_LOADING_ERROR(loader,
+                            "fail to read the name of the native library");
 
   lib_path = str_to_c_str(native_library->library_path);
   native_library->library_pointer = dlopen(lib_path, RTLD_NOW);
@@ -418,16 +421,16 @@ void load_native_function(Program *program, ByteCodeLoader *loader,
   i32 native_lib_offset;
   char *func_name;
 
-  native_function->func_name = read_short_string(loader);
-  RAISE_IF_ANY_LOADING_ERROR(loader,
-                             "fail to read the name of the native function");
+  native_function->func_name = read_string(loader);
+  STOP_IF_ANY_LOADING_ERROR(loader,
+                            "fail to read the name of the native function");
 
   native_function->args_size = read_byte(loader);
-  RAISE_IF_ANY_LOADING_ERROR(
+  STOP_IF_ANY_LOADING_ERROR(
       loader, "fail to read the args size of the native function");
 
   native_lib_offset = read_i32(loader);
-  RAISE_IF_ANY_LOADING_ERROR(
+  STOP_IF_ANY_LOADING_ERROR(
       loader, "fail to read the native library offset of the native function");
 
   native_function->library = &(program->native_libraries[native_lib_offset]);
@@ -439,7 +442,8 @@ void load_native_function(Program *program, ByteCodeLoader *loader,
   free(func_name);
 }
 
-void read_byte_code_file(ByteCodeLoader *loader, Program *program) {
+Program *read_byte_code_file(ByteCodeLoader *loader) {
+  Program *program;
   i32 global_variable_count;
   i32 structure_count;
   i32 function_count;
@@ -448,23 +452,29 @@ void read_byte_code_file(ByteCodeLoader *loader, Program *program) {
   i32 entry_point;
   int i;
 
+  program = NULL;
+
   global_variable_count = read_i32(loader);
-  RAISE_IF_ANY_LOADING_ERROR(loader, "fail to read the global variable count");
+  RETURN_NULL_IF_ANY_LOADING_ERROR(loader,
+                                   "fail to read the global variable count");
 
   structure_count = read_i32(loader);
-  RAISE_IF_ANY_LOADING_ERROR(loader, "fail to read the structure count");
+  RETURN_NULL_IF_ANY_LOADING_ERROR(loader, "fail to read the structure count");
 
   function_count = read_i32(loader);
-  RAISE_IF_ANY_LOADING_ERROR(loader, "fail to read the function count");
+  RETURN_NULL_IF_ANY_LOADING_ERROR(loader, "fail to read the function count");
 
   native_library_count = read_i32(loader);
-  RAISE_IF_ANY_LOADING_ERROR(loader, "fail to read the native library count");
+  RETURN_NULL_IF_ANY_LOADING_ERROR(loader,
+                                   "fail to read the native library count");
 
   native_function_count = read_i32(loader);
-  RAISE_IF_ANY_LOADING_ERROR(loader, "fail to read the native function count");
+  RETURN_NULL_IF_ANY_LOADING_ERROR(loader,
+                                   "fail to read the native function count");
 
   entry_point = read_i32(loader);
-  RAISE_IF_ANY_LOADING_ERROR(loader, "fail to read the entry function offset");
+  RETURN_NULL_IF_ANY_LOADING_ERROR(loader,
+                                   "fail to read the entry function offset");
 
   program = create_program(
       loader->file_name, global_variable_count, structure_count, function_count,
@@ -472,26 +482,32 @@ void read_byte_code_file(ByteCodeLoader *loader, Program *program) {
 
   for (i = 0; i < program->global_variable_count; i++) {
     load_global_variable(program, loader, &(program->global_variables[i]));
-    RAISE_IF_ANY_LOADING_ERROR(loader, "fail to load the global variable");
+    RETURN_NULL_IF_ANY_LOADING_ERROR(loader,
+                                     "fail to load the global variable");
   }
 
   for (i = 0; i < program->structure_count; i++) {
     load_structure(program, loader, &(program->structures_meta_data[i]));
-    RAISE_IF_ANY_LOADING_ERROR(loader, "fail to load the structure");
+    RETURN_NULL_IF_ANY_LOADING_ERROR(loader, "fail to load the structure");
   }
 
   for (i = 0; i < program->function_count; i++) {
     load_function(program, loader, &(program->functions[i]));
-    RAISE_IF_ANY_LOADING_ERROR(loader, "fail to load the function");
+    RETURN_NULL_IF_ANY_LOADING_ERROR(loader, "fail to load the function");
   }
 
   for (i = 0; i < program->native_library_count; i++) {
     load_native_library(program, loader, &(program->native_libraries[i]));
+    RETURN_NULL_IF_ANY_LOADING_ERROR(loader, "fail to load the native library");
   }
 
   for (i = 0; i < program->native_function_count; i++) {
     load_native_function(program, loader, &(program->native_functions[i]));
+    RETURN_NULL_IF_ANY_LOADING_ERROR(loader,
+                                     "fail to load the native function");
   }
+
+  return program;
 }
 
 void view_program(Program *program) {
@@ -558,4 +574,14 @@ void append_error(ByteCodeLoader *loader, const char *message) {
   strncpy(new_error->message, message, str_length + 1);
   new_error->next = loader->error_messages;
   loader->error_messages = new_error;
+}
+
+void show_errors(ByteCodeLoader *loader) {
+  ErrorList *current_error;
+
+  current_error = loader->error_messages;
+  while (current_error != NULL) {
+    printf("%s\n", current_error->message);
+    current_error = current_error->next;
+  }
 }

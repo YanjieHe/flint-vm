@@ -3,4 +3,6 @@
 
 void test_add();
 
+void test_subtract();
+
 #endif /* FLINT_VM_TEST_ARITHMETIC_H */

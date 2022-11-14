@@ -16,6 +16,7 @@ int main(int argc, char **argv) {
   passed_tests = 0;
 
   test_add();
+  test_subtract();
 
   test_create_an_array();
   test_create_an_illegal_array();
@@ -27,6 +28,7 @@ int main(int argc, char **argv) {
   test_function_native_function_call();
 
   test_jump();
+  test_loop();
 
   test_structure();
   test_structure_get_field_value();
