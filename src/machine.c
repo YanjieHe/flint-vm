@@ -132,6 +132,8 @@ void run_machine(Machine *machine) {
   Structure *structure;
   GlobalVariable *global_variable;
   NativeFunction *native_function;
+  i32 next_call_args_size;
+  i32 base;
 
   stack = machine->stack;
   is_gc_object = machine->is_gc_object;
@@ -147,6 +149,8 @@ void run_machine(Machine *machine) {
   call_info = NULL;
   boolean_value = FALSE;
   structure = NULL;
+  next_call_args_size = 0;
+  base = 0;
 
   /* printf("code length: %d\n", code_length); */
 
@@ -753,6 +757,17 @@ void run_machine(Machine *machine) {
       sp = fp;
       RESTORE_CALLER_ENV(call_info, machine, fp, pc);
       SAVE_MACHINE_STATE(machine, sp, fp, pc);
+      break;
+    }
+    case TAIL_CALL: {
+      READ_1BYTE_U8(next_call_args_size);
+      base = (sp + 1) - next_call_args_size;
+      memset(is_gc_object + fp, 0, base - fp);
+      for (offset = 0; offset < next_call_args_size; offset++) {
+        stack[fp + offset] = stack[base + offset];
+        is_gc_object[fp + offset] = is_gc_object[base + offset];
+      }
+      sp = fp + next_call_args_size - 1;
       break;
     }
     case JUMP: {

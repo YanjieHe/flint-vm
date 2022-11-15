@@ -26,6 +26,7 @@ int main(int argc, char **argv) {
   test_function_return_i32();
   test_function_factorial();
   test_function_native_function_call();
+  test_function_tail_call();
 
   test_jump();
   test_loop();

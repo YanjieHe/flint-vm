@@ -216,3 +216,80 @@ void test_function_native_function_call() {
   free_program(program);
   free_machine(machine);
 }
+
+void test_function_tail_call() {
+  Program *program;
+  Machine *machine;
+
+  Byte caller_code[] = {/* push the first value in the constant pool */
+                        PUSH_F32, 0,
+                        /* push the second value in the constant pool */
+                        PUSH_F32, 1,
+                        /* tail call */
+                        TAIL_CALL, 2,
+                        /* call function */
+                        INVOKE_FUNCTION, 2};
+  Byte callee_code[] = {/* push local variable a */
+                        PUSH_LOCAL_F32, 0,
+                        /* push local variable b */
+                        PUSH_LOCAL_F32, 1,
+                        /* a * b */
+                        MUL_F32,
+                        /* return (a * b) */
+                        RETURN_F32};
+  Byte entry_code[] = {INVOKE_FUNCTION, 0, HALT};
+
+  Function *caller;
+  Function *callee;
+  Function *entry;
+
+  program = create_program("Program", 0, 0, 3, 0, 0, 0);
+
+  /* caller function */
+  caller = &(program->functions[0]);
+  copy_byte_code(caller, caller_code, sizeof(caller_code) / sizeof(Byte));
+  caller->name = make_string("caller");
+  caller->args_size = 0;
+  caller->locals = 0;
+  caller->stack = 0;
+  caller->constant_pool_size = 3;
+  caller->constant_pool = malloc(sizeof(Constant) * caller->constant_pool_size);
+
+  /* callee function */
+  callee = &(program->functions[1]);
+  copy_byte_code(callee, callee_code, sizeof(callee_code) / sizeof(Byte));
+  callee->name = make_string("callee");
+  callee->args_size = 2;
+  callee->locals = 0;
+  callee->stack = 0;
+  callee->constant_pool_size = 0;
+  callee->constant_pool = malloc(sizeof(Constant) * callee->constant_pool_size);
+
+  /* entry function */
+  entry = &(program->functions[2]);
+  copy_byte_code(entry, entry_code, sizeof(entry_code) / sizeof(Byte));
+  entry->name = make_string("entry");
+  entry->args_size = 0;
+  entry->locals = 0;
+  entry->stack = 0;
+  entry->constant_pool_size = 0;
+  entry->constant_pool = malloc(sizeof(Constant) * entry->constant_pool_size);
+
+  /* update constant pool function reference */
+  caller->constant_pool[0].u.f32_v = 35;
+  caller->constant_pool[1].u.f32_v = 42;
+  caller->constant_pool[2].u.func_v = callee;
+  entry->constant_pool[0].u.func_v = caller;
+
+  program->entry = entry;
+
+  machine = create_machine(100);
+
+  load_program(machine, program);
+  run_machine(machine);
+  ASSERT_EQUAL((int)(machine->stack[machine->sp].f32_v), 1470);
+  ASSERT_EQUAL(machine->machine_status, MACHINE_STOPPED);
+
+  free_program(program);
+  free_machine(machine);
+}

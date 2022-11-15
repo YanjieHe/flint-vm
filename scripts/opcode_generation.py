@@ -102,8 +102,8 @@ def main() -> None:
     df = load_opcode_data_frame("opcode.csv")
     op_list = expand(df)
 
-    # print_generated_c_code(op_list)
-    print(make_python_opcode_definition(op_list))
+    print_generated_c_code(op_list)
+    # print(make_python_opcode_definition(op_list))
 
 
 if __name__ == "__main__":
