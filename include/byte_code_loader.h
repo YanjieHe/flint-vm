@@ -48,7 +48,6 @@ Program *read_byte_code_file(ByteCodeLoader *loader);
 
 void view_program(Program *program);
 void view_function(Function *function);
-void view_byte_code(Byte *code, size_t code_length);
 void add_loading_error(ByteCodeLoader *loader, const char *message);
 void append_error_to_error_list(ErrorList **error_list, const char *message);
 void show_errors(ErrorList *error_list);

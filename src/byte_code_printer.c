@@ -10,6 +10,8 @@ ByteCodePrinter *create_byte_code_printer(FILE *output,
   printer->output = output;
   printer->is_verbose_mode = is_verbose_mode;
   printer->error_messages = NULL;
+
+  return printer;
 }
 
 void print_byte_code(ByteCodePrinter *printer, Byte *code, size_t code_length) {
@@ -26,7 +28,7 @@ void print_byte_code(ByteCodePrinter *printer, Byte *code, size_t code_length) {
       return;
     } else {
       op_name = opcode_info[op][0];
-      fprintf(printer->output, "%ld: ", i);
+      fprintf(printer->output, "%zu: ", i);
       if (strcmp(opcode_info[op][1], "") == 0) {
         fprintf(printer->output, "%s\n", op_name);
         i++;
