@@ -69,10 +69,11 @@ void test_access_array() {
                  PUSH_I32_1BYTE, 3,
                  /* push array element */
                  PUSH_ARRAY_I64, HALT};
+  Function *entry;
 
   program = create_program_with_single_function(__FUNCTION__, code,
                                                 sizeof(code) / sizeof(Byte));
-  program->functions[0].locals = 1;
+  program->entry->locals = 1;
   machine = create_machine(100);
 
   load_program(machine, program);

@@ -1,7 +1,7 @@
 #ifndef FLINT_VM_OP_CODE_H
 #define FLINT_VM_OP_CODE_H
 
-#define OPCODE_COUNT 148
+#define OPCODE_COUNT 149
 
 enum OpCode {
 	HALT = 0,
@@ -144,14 +144,15 @@ enum OpCode {
 	RETURN_F32 = 137,
 	RETURN_F64 = 138,
 	RETURN_OBJECT = 139,
-	NEW = 140,
-	NEW_ARRAY = 141,
-	NEW_ARRAY_LITERAL_I32 = 142,
-	NEW_ARRAY_LITERAL_I64 = 143,
-	NEW_ARRAY_LITERAL_F32 = 144,
-	NEW_ARRAY_LITERAL_F64 = 145,
-	ARRAY_LENGTH = 146,
-	INSTANCE_OF = 147
+	TAIL_CALL = 140,
+	NEW = 141,
+	NEW_ARRAY = 142,
+	NEW_ARRAY_LITERAL_I32 = 143,
+	NEW_ARRAY_LITERAL_I64 = 144,
+	NEW_ARRAY_LITERAL_F32 = 145,
+	NEW_ARRAY_LITERAL_F64 = 146,
+	ARRAY_LENGTH = 147,
+	INSTANCE_OF = 148
 };
 
 static const char* opcode_info [][2] = {
@@ -295,6 +296,7 @@ static const char* opcode_info [][2] = {
 	{ "RETURN_F32", "" },
 	{ "RETURN_F64", "" },
 	{ "RETURN_OBJECT", "" },
+	{ "TAIL_CALL", "b" },
 	{ "NEW", "b" },
 	{ "NEW_ARRAY", "b" },
 	{ "NEW_ARRAY_LITERAL_I32", "u" },

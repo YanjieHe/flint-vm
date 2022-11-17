@@ -68,10 +68,11 @@
   (MACHINE)->fp = (FP);                                                        \
   (MACHINE)->pc = (PC);
 
-#define RESTORE_CALLER_ENV(CALL_INFO, MACHINE, FP, PC)                         \
+#define RESTORE_CALLER_ENV(CALL_INFO, MACHINE, FP, PC, CONSTANT_POOL)          \
   (MACHINE)->env.function = (CALL_INFO)->caller;                               \
   (FP) = (CALL_INFO)->caller_fp;                                               \
-  (PC) = (CALL_INFO)->caller_pc;
+  (PC) = (CALL_INFO)->caller_pc;                                               \
+  (CONSTANT_POOL) = (MACHINE)->env.function->constant_pool;
 
 Machine *create_machine(i32 stack_max_size) {
   Machine *machine;
@@ -86,7 +87,7 @@ Machine *create_machine(i32 stack_max_size) {
   machine->fp = 0;
   machine->pc = NULL;
   machine->machine_status = MACHINE_STOPPED;
-  memset(machine->is_gc_object, 0, stack_max_size);
+  memset(machine->is_gc_object, 0, sizeof(u8) * stack_max_size);
 
   return machine;
 }
@@ -113,6 +114,22 @@ void load_program(Machine *machine, Program *program) {
   machine->pc = program->entry->code;
 }
 
+void print_stack(Machine *machine, i32 size) {
+  i32 i;
+
+  for (i = 0; i < size; i++) {
+    printf("#%d: ", i);
+    if (machine->is_gc_object[i]) {
+      printf("Object. type id: %d\n", machine->stack[i].obj_v->kind);
+    } else {
+      printf("\tInt32: %d\n", machine->stack[i].i32_v);
+      printf("\tInt64: %ld\n", machine->stack[i].i64_v);
+      printf("\tFloat32: %f\n", machine->stack[i].f32_v);
+      printf("\tFloat64: %lf\n", machine->stack[i].f64_v);
+    }
+  }
+}
+
 void run_machine(Machine *machine) {
   /* state */
   Byte op;
@@ -121,6 +138,7 @@ void run_machine(Machine *machine) {
   i32 sp;
   i32 fp;
   Byte *pc;
+  Constant *constant_pool;
 
   /* temporary storage */
   Array *array;
@@ -132,12 +150,15 @@ void run_machine(Machine *machine) {
   Structure *structure;
   GlobalVariable *global_variable;
   NativeFunction *native_function;
+  i32 next_call_args_size;
+  i32 base;
 
   stack = machine->stack;
   is_gc_object = machine->is_gc_object;
   sp = machine->sp;
   fp = machine->fp;
   pc = machine->pc;
+  constant_pool = machine->env.function->constant_pool;
   machine->machine_status = MACHINE_RUNNING;
 
   array = NULL;
@@ -147,6 +168,8 @@ void run_machine(Machine *machine) {
   call_info = NULL;
   boolean_value = FALSE;
   structure = NULL;
+  next_call_args_size = 0;
+  base = 0;
 
   /* printf("code length: %d\n", code_length); */
 
@@ -154,7 +177,13 @@ void run_machine(Machine *machine) {
 
     op = *pc;
     pc++;
-    /* printf("op = %s\n", opcode_info[op][0]); */
+
+    /*
+    printf("fp = %d, sp = %d\n", fp, sp);
+    print_stack(machine, sp + 1);
+    printf("\n");
+    printf("op = %s\n", opcode_info[op][0]);
+    */
 
     switch (op) {
     case HALT: {
@@ -206,27 +235,27 @@ void run_machine(Machine *machine) {
     }
     case PUSH_I32: {
       READ_1BYTE_U8(offset);
-      STACK_PUSH_I32(machine->env.function->constant_pool[offset].u.i32_v);
+      STACK_PUSH_I32(constant_pool[offset].u.i32_v);
       break;
     }
     case PUSH_I64: {
       READ_1BYTE_U8(offset);
-      STACK_PUSH_I64(machine->env.function->constant_pool[offset].u.i64_v);
+      STACK_PUSH_I64(constant_pool[offset].u.i64_v);
       break;
     }
     case PUSH_F32: {
       READ_1BYTE_U8(offset);
-      STACK_PUSH_F32(machine->env.function->constant_pool[offset].u.f32_v);
+      STACK_PUSH_F32(constant_pool[offset].u.f32_v);
       break;
     }
     case PUSH_F64: {
       READ_1BYTE_U8(offset);
-      STACK_PUSH_F64(machine->env.function->constant_pool[offset].u.f64_v);
+      STACK_PUSH_F64(constant_pool[offset].u.f64_v);
       break;
     }
     case PUSH_STRING: {
       READ_1BYTE_U8(offset);
-      STACK_PUSH_OBJECT(machine->env.function->constant_pool[offset].u.obj_v);
+      STACK_PUSH_OBJECT(constant_pool[offset].u.obj_v);
       break;
     }
     case ADD_I32: {
@@ -657,24 +686,26 @@ void run_machine(Machine *machine) {
     }
     case INVOKE_FUNCTION: {
       READ_1BYTE_U8(offset);
-      callee = machine->env.function->constant_pool[offset].u.func_v;
+      callee = constant_pool[offset].u.func_v;
       sp = sp + callee->locals;
       sp++;
+
       call_info = (CallInfo *)&(stack[sp]);
       call_info->caller = machine->env.function;
       call_info->caller_fp = fp;
       call_info->caller_pc = pc;
+
       sp = sp + CALL_INFO_ALIGN_SIZE;
       machine->env.function = callee;
       pc = callee->code;
       fp = sp - CALL_INFO_ALIGN_SIZE - callee->locals - callee->args_size;
+      constant_pool = machine->env.function->constant_pool;
       SAVE_MACHINE_STATE(machine, sp, fp, pc);
       break;
     }
     case INVOKE_NATIVE_FUNCTION: {
       READ_1BYTE_U8(offset);
-      native_function =
-          machine->env.function->constant_pool[offset].u.native_func_v;
+      native_function = constant_pool[offset].u.native_func_v;
       machine->fp = sp - native_function->args_size + 1;
       machine->sp = sp;
       machine->pc = pc;
@@ -692,7 +723,7 @@ void run_machine(Machine *machine) {
                                       machine->env.function->args_size]);
       memset(is_gc_object + fp, 0, sp - fp + 1);
       sp = fp;
-      RESTORE_CALLER_ENV(call_info, machine, fp, pc);
+      RESTORE_CALLER_ENV(call_info, machine, fp, pc, constant_pool);
       SAVE_MACHINE_STATE(machine, sp, fp, pc);
       break;
     }
@@ -704,7 +735,7 @@ void run_machine(Machine *machine) {
        */
       memset(is_gc_object + fp, 0, sp - fp);
       sp = fp;
-      RESTORE_CALLER_ENV(call_info, machine, fp, pc);
+      RESTORE_CALLER_ENV(call_info, machine, fp, pc, constant_pool);
       SAVE_MACHINE_STATE(machine, sp, fp, pc);
       break;
     }
@@ -716,7 +747,7 @@ void run_machine(Machine *machine) {
        */
       memset(is_gc_object + fp, 0, sp - fp);
       sp = fp;
-      RESTORE_CALLER_ENV(call_info, machine, fp, pc);
+      RESTORE_CALLER_ENV(call_info, machine, fp, pc, constant_pool);
       SAVE_MACHINE_STATE(machine, sp, fp, pc);
       break;
     }
@@ -728,7 +759,7 @@ void run_machine(Machine *machine) {
        */
       memset(is_gc_object + fp, 0, sp - fp);
       sp = fp;
-      RESTORE_CALLER_ENV(call_info, machine, fp, pc);
+      RESTORE_CALLER_ENV(call_info, machine, fp, pc, constant_pool);
       SAVE_MACHINE_STATE(machine, sp, fp, pc);
       break;
     }
@@ -740,7 +771,7 @@ void run_machine(Machine *machine) {
        */
       memset(is_gc_object + fp, 0, sp - fp);
       sp = fp;
-      RESTORE_CALLER_ENV(call_info, machine, fp, pc);
+      RESTORE_CALLER_ENV(call_info, machine, fp, pc, constant_pool);
       SAVE_MACHINE_STATE(machine, sp, fp, pc);
       break;
     }
@@ -751,7 +782,42 @@ void run_machine(Machine *machine) {
       memset(is_gc_object + fp + 1, 0, sp - fp + 1);
       is_gc_object[fp] = TRUE;
       sp = fp;
-      RESTORE_CALLER_ENV(call_info, machine, fp, pc);
+      RESTORE_CALLER_ENV(call_info, machine, fp, pc, constant_pool);
+      SAVE_MACHINE_STATE(machine, sp, fp, pc);
+      break;
+    }
+    case TAIL_CALL: {
+      READ_1BYTE_U8(offset);
+      callee = constant_pool[offset].u.func_v;
+      call_info = (CallInfo *)&(stack[fp + machine->env.function->locals +
+                                      machine->env.function->args_size]);
+      machine->env.function = call_info->caller;
+      next_call_args_size = callee->args_size;
+      base = (sp + 1) - next_call_args_size;
+      sp = fp;
+      fp = call_info->caller_fp;
+      pc = call_info->caller_pc;
+      memset(is_gc_object + sp, 0, base - sp);
+      for (offset = 0; offset < next_call_args_size; offset++) {
+        stack[sp + offset] = stack[base + offset];
+        is_gc_object[sp + offset] = is_gc_object[base + offset];
+      }
+      sp = sp + next_call_args_size - 1;
+
+      /* invoke function */
+      sp = sp + callee->locals;
+      sp++;
+
+      call_info = (CallInfo *)&(stack[sp]);
+      call_info->caller = machine->env.function;
+      call_info->caller_fp = fp;
+      call_info->caller_pc = pc;
+
+      sp = sp + CALL_INFO_ALIGN_SIZE;
+      machine->env.function = callee;
+      pc = callee->code;
+      fp = sp - CALL_INFO_ALIGN_SIZE - callee->locals - callee->args_size;
+      constant_pool = machine->env.function->constant_pool;
       SAVE_MACHINE_STATE(machine, sp, fp, pc);
       break;
     }
@@ -783,8 +849,7 @@ void run_machine(Machine *machine) {
     case NEW: {
       READ_1BYTE_U8(offset);
       structure = malloc(sizeof(Structure));
-      structure->meta_data =
-          machine->env.function->constant_pool[offset].u.struct_meta_data;
+      structure->meta_data = constant_pool[offset].u.struct_meta_data;
       structure->values =
           malloc(sizeof(Value) * structure->meta_data->n_values);
       sp++;
@@ -868,8 +933,7 @@ void run_machine(Machine *machine) {
     }
     case PUSH_GLOBAL_I32: {
       READ_1BYTE_U8(offset);
-      global_variable =
-          machine->env.function->constant_pool[offset].u.global_variable_v;
+      global_variable = constant_pool[offset].u.global_variable_v;
       if (global_variable->is_initialized) {
         STACK_PUSH_I32(global_variable->value.i32_v);
       } else {
@@ -890,8 +954,7 @@ void run_machine(Machine *machine) {
     }
     case PUSH_GLOBAL_I64: {
       READ_1BYTE_U8(offset);
-      global_variable =
-          machine->env.function->constant_pool[offset].u.global_variable_v;
+      global_variable = constant_pool[offset].u.global_variable_v;
       if (global_variable->is_initialized) {
         STACK_PUSH_I64(global_variable->value.i64_v);
       } else {
@@ -912,8 +975,7 @@ void run_machine(Machine *machine) {
     }
     case PUSH_GLOBAL_F32: {
       READ_1BYTE_U8(offset);
-      global_variable =
-          machine->env.function->constant_pool[offset].u.global_variable_v;
+      global_variable = constant_pool[offset].u.global_variable_v;
       if (global_variable->is_initialized) {
         STACK_PUSH_F32(global_variable->value.f32_v);
       } else {
@@ -934,8 +996,7 @@ void run_machine(Machine *machine) {
     }
     case PUSH_GLOBAL_F64: {
       READ_1BYTE_U8(offset);
-      global_variable =
-          machine->env.function->constant_pool[offset].u.global_variable_v;
+      global_variable = constant_pool[offset].u.global_variable_v;
       if (global_variable->is_initialized) {
         STACK_PUSH_F64(global_variable->value.f64_v);
       } else {
@@ -956,8 +1017,7 @@ void run_machine(Machine *machine) {
     }
     case PUSH_GLOBAL_OBJECT: {
       READ_1BYTE_U8(offset);
-      global_variable =
-          machine->env.function->constant_pool[offset].u.global_variable_v;
+      global_variable = constant_pool[offset].u.global_variable_v;
       if (global_variable->is_initialized) {
         STACK_PUSH_OBJECT(global_variable->value.obj_v);
       } else {
@@ -978,40 +1038,35 @@ void run_machine(Machine *machine) {
     }
     case POP_GLOBAL_I32: {
       READ_1BYTE_U8(offset);
-      global_variable =
-          machine->env.function->constant_pool[offset].u.global_variable_v;
+      global_variable = constant_pool[offset].u.global_variable_v;
       STACK_POP_I32(global_variable->value.i32_v);
       global_variable->is_initialized = TRUE;
       break;
     }
     case POP_GLOBAL_I64: {
       READ_1BYTE_U8(offset);
-      global_variable =
-          machine->env.function->constant_pool[offset].u.global_variable_v;
+      global_variable = constant_pool[offset].u.global_variable_v;
       STACK_POP_I64(global_variable->value.i64_v);
       global_variable->is_initialized = TRUE;
       break;
     }
     case POP_GLOBAL_F32: {
       READ_1BYTE_U8(offset);
-      global_variable =
-          machine->env.function->constant_pool[offset].u.global_variable_v;
+      global_variable = constant_pool[offset].u.global_variable_v;
       STACK_POP_F32(global_variable->value.f32_v);
       global_variable->is_initialized = TRUE;
       break;
     }
     case POP_GLOBAL_F64: {
       READ_1BYTE_U8(offset);
-      global_variable =
-          machine->env.function->constant_pool[offset].u.global_variable_v;
+      global_variable = constant_pool[offset].u.global_variable_v;
       STACK_POP_F64(global_variable->value.f64_v);
       global_variable->is_initialized = TRUE;
       break;
     }
     case POP_GLOBAL_OBJECT: {
       READ_1BYTE_U8(offset);
-      global_variable =
-          machine->env.function->constant_pool[offset].u.global_variable_v;
+      global_variable = constant_pool[offset].u.global_variable_v;
       STACK_POP_OBJECT(global_variable->value.obj_v);
       global_variable->is_initialized = TRUE;
       break;
