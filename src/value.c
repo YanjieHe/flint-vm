@@ -1,7 +1,7 @@
 #include "value.h"
 #include <stdlib.h>
 #include <string.h>
-#include <dlfcn.h>
+#include "load_library.h"
 
 Program *create_program(char *file_name, i32 global_variable_count,
                         i32 structure_count, i32 function_count,
@@ -120,7 +120,7 @@ void free_program(Program *program) {
   /* native libraries */
   for (i = 0; i < program->native_library_count; i++) {
     free_string(program->native_libraries[i].library_path);
-    dlclose(program->native_libraries[i].library_pointer);
+    close_dynamic_library(program->native_libraries[i].library_pointer);
   }
   free(program->native_libraries);
 

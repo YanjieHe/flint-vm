@@ -3,7 +3,7 @@
 #include "opcode.h"
 #include "type.h"
 #include "byte_code_loader.h"
-#include <dlfcn.h>
+#include "load_library.h"
 
 #define RUN_EVEN_ODD_PROGRAM_WITH_INPUT(INTEGER)                               \
   entry->constant_pool[0].u.i32_v = (INTEGER);                                 \
@@ -207,10 +207,10 @@ void test_function_native_function_call() {
 
   native_function = &(program->native_functions[0]);
   native_function->args_size = 1;
-  program->native_libraries[0].library_pointer = dlopen(
-      "../extensions/input-output/build/libflint-vm-input-output.so", RTLD_NOW);
+  program->native_libraries[0].library_pointer = open_dynamic_library(
+      "../extensions/input-output/build/libflint-vm-input-output.so");
   native_function->function_pointer =
-      dlsym(program->native_libraries[0].library_pointer, "FLINT_VM_println");
+      load_function_from_dynamic_library(program->native_libraries[0].library_pointer, "FLINT_VM_println");
   function->constant_pool[1].u.native_func_v = native_function;
   ASSERT_NOT_EQUAL(native_function->function_pointer, NULL);
   machine = create_machine(100);
