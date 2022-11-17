@@ -39,6 +39,8 @@ void free_machine(Machine *machine);
 
 void load_program(Machine *machine, Program *program);
 
+void print_stack(Machine* machine, i32 size);
+
 void run_machine(Machine *machine);
 
 #define GET_I32_ARG(MACHINE, OFFSET)                                           \

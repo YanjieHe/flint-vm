@@ -5,6 +5,15 @@
 #include "byte_code_loader.h"
 #include <dlfcn.h>
 
+#define RUN_EVEN_ODD_PROGRAM_WITH_INPUT(INTEGER)                               \
+  entry->constant_pool[0].u.i32_v = (INTEGER);                                 \
+  machine = create_machine(100);                                               \
+  load_program(machine, program);                                              \
+  run_machine(machine);                                                        \
+  ASSERT_EQUAL(machine->stack[machine->sp].i32_v, (INTEGER) % 2 == 0);         \
+  ASSERT_EQUAL(machine->machine_status, MACHINE_STOPPED);                      \
+  free_machine(machine);
+
 void test_function_invocation() {
   Program *program;
   Machine *machine;
@@ -28,8 +37,7 @@ void test_function_invocation() {
   caller->locals = 0;
   caller->stack = 0;
   caller->constant_pool_size = 1;
-  caller->constant_pool =
-      malloc(sizeof(Constant) * program->functions[0].constant_pool_size);
+  caller->constant_pool = malloc(sizeof(Constant) * caller->constant_pool_size);
 
   /* callee function */
   callee = &(program->functions[1]);
@@ -64,7 +72,7 @@ void test_function_return_i32() {
                         /* push second argument */
                         PUSH_I32_1BYTE, 80,
                         /* invoke function */
-                        INVOKE_FUNCTION, 0};
+                        INVOKE_FUNCTION, 0, HALT};
   Byte callee_code[] = {PUSH_LOCAL_I32, 0,         PUSH_LOCAL_I32, 1,
                         MUL_I32,        RETURN_I32};
   Function *caller;
@@ -80,8 +88,7 @@ void test_function_return_i32() {
   caller->locals = 0;
   caller->stack = 0;
   caller->constant_pool_size = 1;
-  caller->constant_pool =
-      malloc(sizeof(Constant) * program->functions[0].constant_pool_size);
+  caller->constant_pool = malloc(sizeof(Constant) * caller->constant_pool_size);
 
   /* callee function */
   callee = &(program->functions[1]);
@@ -226,9 +233,7 @@ void test_function_tail_call() {
                         /* push the second value in the constant pool */
                         PUSH_F32, 1,
                         /* tail call */
-                        TAIL_CALL, 2,
-                        /* call function */
-                        INVOKE_FUNCTION, 2};
+                        TAIL_CALL, 2};
   Byte callee_code[] = {/* push local variable a */
                         PUSH_LOCAL_F32, 0,
                         /* push local variable b */
@@ -272,7 +277,7 @@ void test_function_tail_call() {
   entry->args_size = 0;
   entry->locals = 0;
   entry->stack = 0;
-  entry->constant_pool_size = 0;
+  entry->constant_pool_size = 1;
   entry->constant_pool = malloc(sizeof(Constant) * entry->constant_pool_size);
 
   /* update constant pool function reference */
@@ -292,4 +297,86 @@ void test_function_tail_call() {
 
   free_program(program);
   free_machine(machine);
+}
+
+void test_function_mutual_tail_recursion() {
+  Program *program;
+  Machine *machine;
+
+  Byte odd_code[] = {/* push local variable n */
+                     PUSH_LOCAL_I32, 0, PUSH_I32_0,
+                     /* n == 0 */
+                     EQ_I32,
+                     /* if n <> 0, jump */
+                     JUMP_IF_FALSE, 0, 2,
+                     /* return false */
+                     PUSH_I32_0, RETURN_I32,
+                     /* n - 1 */
+                     PUSH_LOCAL_I32, 0, PUSH_I32_1, SUB_I32,
+                     /* tail call even(n - 1) */
+                     TAIL_CALL, 0};
+  Byte even_code[] = {/* push local variable n */
+                      PUSH_LOCAL_I32, 0, PUSH_I32_0,
+                      /* n == 0 */
+                      EQ_I32,
+                      /* if n <> 0, jump */
+                      JUMP_IF_FALSE, 0, 2,
+                      /* return true */
+                      PUSH_I32_1, RETURN_I32,
+                      /* n - 1 */
+                      PUSH_LOCAL_I32, 0, PUSH_I32_1, SUB_I32,
+                      /* tail call odd(n - 1) */
+                      TAIL_CALL, 0};
+  Byte entry_code[] = {PUSH_I32, 0, INVOKE_FUNCTION, 1, HALT};
+
+  Function *odd;
+  Function *even;
+  Function *entry;
+
+  program = create_program("Program", 0, 0, 3, 0, 0, 2);
+
+  /* odd function */
+  odd = &(program->functions[0]);
+  copy_byte_code(odd, odd_code, sizeof(odd_code) / sizeof(Byte));
+  odd->name = make_string("odd");
+  odd->args_size = 1;
+  odd->locals = 0;
+  odd->stack = 0;
+  odd->constant_pool_size = 1;
+  odd->constant_pool = malloc(sizeof(Constant) * odd->constant_pool_size);
+
+  /* even function */
+  even = &(program->functions[1]);
+  copy_byte_code(even, even_code, sizeof(even_code) / sizeof(Byte));
+  even->name = make_string("even");
+  even->args_size = 1;
+  even->locals = 0;
+  even->stack = 0;
+  even->constant_pool_size = 1;
+  even->constant_pool = malloc(sizeof(Constant) * even->constant_pool_size);
+
+  /* entry function */
+  entry = &(program->functions[2]);
+  copy_byte_code(entry, entry_code, sizeof(entry_code) / sizeof(Byte));
+  entry->name = make_string("entry");
+  entry->args_size = 0;
+  entry->locals = 0;
+  entry->stack = 0;
+  entry->constant_pool_size = 2;
+  entry->constant_pool = malloc(sizeof(Constant) * entry->constant_pool_size);
+
+  /* update constant pool function reference */
+  odd->constant_pool[0].u.func_v = even;
+  even->constant_pool[0].u.func_v = odd;
+  entry->constant_pool[1].u.func_v = even;
+
+  program->entry = entry;
+
+  RUN_EVEN_ODD_PROGRAM_WITH_INPUT(2);
+  RUN_EVEN_ODD_PROGRAM_WITH_INPUT(13);
+  RUN_EVEN_ODD_PROGRAM_WITH_INPUT(75);
+  RUN_EVEN_ODD_PROGRAM_WITH_INPUT(10000);
+  RUN_EVEN_ODD_PROGRAM_WITH_INPUT(10007);
+
+  free_program(program);
 }

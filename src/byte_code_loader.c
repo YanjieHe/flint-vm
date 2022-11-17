@@ -50,6 +50,7 @@ void free_byte_code_loader(ByteCodeLoader *loader) {
   fclose(loader->file);
   free(loader->file_name);
   free_error_list(loader->error_messages);
+  free(loader);
 }
 
 Byte read_byte(ByteCodeLoader *loader) {
