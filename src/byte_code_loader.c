@@ -3,7 +3,7 @@
 #include <string.h>
 #include "opcode.h"
 #include <math.h>
-#include <dlfcn.h>
+#include "load_library.h"
 
 #define STOP_IF_ANY_LOADING_ERROR(LOADER, MESSAGE)                             \
   if ((LOADER)->error_messages) {                                              \
@@ -415,7 +415,7 @@ void load_native_library(Program *program, ByteCodeLoader *loader,
                             "fail to read the name of the native library");
 
   lib_path = str_to_c_str(native_library->library_path);
-  native_library->library_pointer = dlopen(lib_path, RTLD_NOW);
+  native_library->library_pointer = open_dynamic_library(lib_path);
   free(lib_path);
 }
 
@@ -439,8 +439,8 @@ void load_native_function(Program *program, ByteCodeLoader *loader,
   native_function->library = &(program->native_libraries[native_lib_offset]);
   func_name = str_to_c_str(native_function->func_name);
 
-  native_function->function_pointer =
-      dlsym(native_function->library->library_pointer, func_name);
+  native_function->function_pointer = load_function_from_dynamic_library(
+      native_function->library->library_pointer, func_name);
 
   free(func_name);
 }
