@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
-from typing import List, Tuple
+from typing import List
+import argparse
 
 
 class OpInfo:
@@ -99,11 +100,20 @@ def load_opcode_data_frame(path: str) -> pd.DataFrame:
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--language', type=str, required=True)
+    args = parser.parse_args()
+
     df = load_opcode_data_frame("opcode.csv")
     op_list = expand(df)
 
-    print_generated_c_code(op_list)
-    # print(make_python_opcode_definition(op_list))
+    if args.language == "c":
+        print_generated_c_code(op_list)
+    elif args.language == "python":
+        print(make_python_opcode_definition(op_list))
+    else:
+        raise Exception(
+            "language '{0}' is not supported".format(args.language))
 
 
 if __name__ == "__main__":

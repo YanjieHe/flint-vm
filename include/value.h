@@ -54,6 +54,7 @@ typedef struct GCObject {
     struct String *str_v;
     struct Array *arr_v;
     struct Structure *struct_v;
+    struct Closure* closure_v;
   } u;
 } GCObject;
 
@@ -122,8 +123,6 @@ typedef struct Method {
   Byte *code;
 } Method;
 
-typedef struct Closure { Value *up_values; } Closure;
-
 typedef struct NativeLibrary {
   String *library_path;
   void *library_pointer;
@@ -153,6 +152,11 @@ typedef struct Function {
   i32 code_length;
   Byte *code;
 } Function;
+
+typedef struct Closure {
+  Structure *captured_values;
+  Function *function;
+} Closure;
 
 typedef struct CallInfo {
   Function *caller;
