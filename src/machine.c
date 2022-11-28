@@ -150,6 +150,7 @@ void run_machine(Machine *machine) {
   Structure *structure;
   GlobalVariable *global_variable;
   NativeFunction *native_function;
+  Closure *closure;
   i32 next_call_args_size;
   i32 base;
 
@@ -1069,6 +1070,24 @@ void run_machine(Machine *machine) {
       global_variable = constant_pool[offset].u.global_variable_v;
       STACK_POP_OBJECT(global_variable->value.obj_v);
       global_variable->is_initialized = TRUE;
+      break;
+    }
+    case NEW_CLOSURE: {
+      READ_1BYTE_U8(offset);
+      closure = malloc(sizeof(Closure));
+      closure->captured_values = stack[sp].obj_v;
+      closure->function = constant_pool[offset].u.func_v;
+      stack[sp].obj_v = malloc(sizeof(GCObject));
+      stack[sp].obj_v->kind = GCOBJECT_KIND_CLOSURE;
+      stack[sp].obj_v->u.closure_v = closure;
+      HEAP_PUT(machine->heap, stack[sp].obj_v);
+      break;
+    }
+    case PREPARE_CLOSURE_CALL: {
+      READ_1BYTE_U8(offset);
+      closure = stack[sp].obj_v->u.closure_v;
+      constant_pool[offset].u.func_v = closure->function;
+      stack[sp].obj_v = closure->captured_values;
       break;
     }
     }

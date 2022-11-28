@@ -1,7 +1,7 @@
 #ifndef FLINT_VM_OP_CODE_H
 #define FLINT_VM_OP_CODE_H
 
-#define OPCODE_COUNT 149
+#define OPCODE_COUNT 151
 
 enum OpCode {
 	HALT = 0,
@@ -151,8 +151,10 @@ enum OpCode {
 	NEW_ARRAY_LITERAL_I64 = 144,
 	NEW_ARRAY_LITERAL_F32 = 145,
 	NEW_ARRAY_LITERAL_F64 = 146,
-	ARRAY_LENGTH = 147,
-	INSTANCE_OF = 148
+	NEW_CLOSURE = 147,
+	PREPARE_CLOSURE_CALL = 148,
+	ARRAY_LENGTH = 149,
+	INSTANCE_OF = 150
 };
 
 static const char* opcode_info [][2] = {
@@ -303,6 +305,8 @@ static const char* opcode_info [][2] = {
 	{ "NEW_ARRAY_LITERAL_I64", "u" },
 	{ "NEW_ARRAY_LITERAL_F32", "u" },
 	{ "NEW_ARRAY_LITERAL_F64", "u" },
+	{ "NEW_CLOSURE", "b" },
+	{ "PREPARE_CLOSURE_CALL", "b" },
 	{ "ARRAY_LENGTH", "" },
 	{ "INSTANCE_OF", "b" }
 };

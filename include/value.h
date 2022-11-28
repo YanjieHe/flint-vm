@@ -42,7 +42,8 @@ typedef enum GCObjectKind {
   GCOBJECT_KIND_F32_ARRAY,
   GCOBJECT_KIND_F64_ARRAY,
   GCOBJECT_KIND_OBJ_ARRAY,
-  GCOBJECT_KIND_OBJECT
+  GCOBJECT_KIND_OBJECT,
+  GCOBJECT_KIND_CLOSURE
 } GCObjectKind;
 
 typedef struct GCObject {
@@ -54,7 +55,7 @@ typedef struct GCObject {
     struct String *str_v;
     struct Array *arr_v;
     struct Structure *struct_v;
-    struct Closure* closure_v;
+    struct Closure *closure_v;
   } u;
 } GCObject;
 
@@ -154,7 +155,7 @@ typedef struct Function {
 } Function;
 
 typedef struct Closure {
-  Structure *captured_values;
+  GCObject *captured_values;
   Function *function;
 } Closure;
 
