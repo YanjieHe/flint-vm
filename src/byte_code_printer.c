@@ -32,7 +32,8 @@ void print_byte_code(ByteCodePrinter *printer, Byte *code, size_t code_length) {
       if (strcmp(opcode_info[op][1], "") == 0) {
         fprintf(printer->output, "%s\n", op_name);
         i++;
-      } else if (strcmp(opcode_info[op][1], "b") == 0) {
+      } else if (strcmp(opcode_info[op][1], "b") == 0 ||
+                 strcmp(opcode_info[op][1], "cp") == 0) {
         fprintf(printer->output, "%s  %d\n", op_name, code[i + 1]);
         i += 2;
       } else if (strcmp(opcode_info[op][1], "u") == 0) {

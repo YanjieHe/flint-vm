@@ -1,7 +1,7 @@
 #ifndef FLINT_VM_OP_CODE_H
 #define FLINT_VM_OP_CODE_H
 
-#define OPCODE_COUNT 149
+#define OPCODE_COUNT 151
 
 enum OpCode {
 	HALT = 0,
@@ -151,8 +151,10 @@ enum OpCode {
 	NEW_ARRAY_LITERAL_I64 = 144,
 	NEW_ARRAY_LITERAL_F32 = 145,
 	NEW_ARRAY_LITERAL_F64 = 146,
-	ARRAY_LENGTH = 147,
-	INSTANCE_OF = 148
+	NEW_CLOSURE = 147,
+	INVOKE_CLOSURE = 148,
+	ARRAY_LENGTH = 149,
+	INSTANCE_OF = 150
 };
 
 static const char* opcode_info [][2] = {
@@ -167,11 +169,11 @@ static const char* opcode_info [][2] = {
 	{ "PUSH_F32_1", "" },
 	{ "PUSH_F64_0", "" },
 	{ "PUSH_F64_1", "" },
-	{ "PUSH_I32", "b" },
-	{ "PUSH_I64", "b" },
-	{ "PUSH_F32", "b" },
-	{ "PUSH_F64", "b" },
-	{ "PUSH_STRING", "b" },
+	{ "PUSH_I32", "cp" },
+	{ "PUSH_I64", "cp" },
+	{ "PUSH_F32", "cp" },
+	{ "PUSH_F64", "cp" },
+	{ "PUSH_STRING", "cp" },
 	{ "PUSH_NULL", "" },
 	{ "PUSH_LOCAL_I32", "b" },
 	{ "PUSH_LOCAL_I64", "b" },
@@ -288,8 +290,8 @@ static const char* opcode_info [][2] = {
 	{ "JUMP", "s" },
 	{ "JUMP_IF_TRUE", "s" },
 	{ "JUMP_IF_FALSE", "s" },
-	{ "INVOKE_FUNCTION", "b" },
-	{ "INVOKE_NATIVE_FUNCTION", "b" },
+	{ "INVOKE_FUNCTION", "cp" },
+	{ "INVOKE_NATIVE_FUNCTION", "cp" },
 	{ "RETURN", "" },
 	{ "RETURN_I32", "" },
 	{ "RETURN_I64", "" },
@@ -297,12 +299,14 @@ static const char* opcode_info [][2] = {
 	{ "RETURN_F64", "" },
 	{ "RETURN_OBJECT", "" },
 	{ "TAIL_CALL", "b" },
-	{ "NEW", "b" },
+	{ "NEW", "cp" },
 	{ "NEW_ARRAY", "b" },
 	{ "NEW_ARRAY_LITERAL_I32", "u" },
 	{ "NEW_ARRAY_LITERAL_I64", "u" },
 	{ "NEW_ARRAY_LITERAL_F32", "u" },
 	{ "NEW_ARRAY_LITERAL_F64", "u" },
+	{ "NEW_CLOSURE", "cp" },
+	{ "INVOKE_CLOSURE", "cp" },
 	{ "ARRAY_LENGTH", "" },
 	{ "INSTANCE_OF", "b" }
 };

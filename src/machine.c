@@ -68,11 +68,27 @@
   (MACHINE)->fp = (FP);                                                        \
   (MACHINE)->pc = (PC);
 
-#define RESTORE_CALLER_ENV(CALL_INFO, MACHINE, FP, PC, CONSTANT_POOL)          \
+#define RESTORE_CALLER_ENV(CALL_INFO, MACHINE, CONSTANT_POOL)                  \
   (MACHINE)->env.function = (CALL_INFO)->caller;                               \
+  (CONSTANT_POOL) = (CALL_INFO)->caller->constant_pool;
+
+#define RESTORE_CALLER_COUNTER(CALL_INFO, FP, PC)                              \
   (FP) = (CALL_INFO)->caller_fp;                                               \
-  (PC) = (CALL_INFO)->caller_pc;                                               \
-  (CONSTANT_POOL) = (MACHINE)->env.function->constant_pool;
+  (PC) = (CALL_INFO)->caller_pc;
+
+#define INVOKE_FUNCTION()                                                      \
+  sp = sp + callee->locals;                                                    \
+  sp++;                                                                        \
+  call_info = (CallInfo *)&(stack[sp]);                                        \
+  call_info->caller = machine->env.function;                                   \
+  call_info->caller_fp = fp;                                                   \
+  call_info->caller_pc = pc;                                                   \
+  sp = sp + CALL_INFO_ALIGN_SIZE;                                              \
+  machine->env.function = callee;                                              \
+  pc = callee->code;                                                           \
+  fp = sp - CALL_INFO_ALIGN_SIZE - callee->locals - callee->args_size;         \
+  constant_pool = machine->env.function->constant_pool;                        \
+  SAVE_MACHINE_STATE(machine, sp, fp, pc);
 
 Machine *create_machine(i32 stack_max_size) {
   Machine *machine;
@@ -150,6 +166,7 @@ void run_machine(Machine *machine) {
   Structure *structure;
   GlobalVariable *global_variable;
   NativeFunction *native_function;
+  Closure *closure;
   i32 next_call_args_size;
   i32 base;
 
@@ -177,14 +194,12 @@ void run_machine(Machine *machine) {
 
     op = *pc;
     pc++;
-
     /*
     printf("fp = %d, sp = %d\n", fp, sp);
     print_stack(machine, sp + 1);
     printf("\n");
     printf("op = %s\n", opcode_info[op][0]);
     */
-
     switch (op) {
     case HALT: {
       SAVE_MACHINE_STATE(machine, sp, fp, pc);
@@ -278,6 +293,11 @@ void run_machine(Machine *machine) {
       sp--;
       break;
     }
+    case MOD_I32: {
+      stack[sp - 1].i32_v = (stack[sp - 1].i32_v % stack[sp].i32_v);
+      sp--;
+      break;
+    }
     case ADD_I64: {
       stack[sp - 1].i64_v = (stack[sp - 1].i64_v + stack[sp].i64_v);
       sp--;
@@ -295,6 +315,11 @@ void run_machine(Machine *machine) {
     }
     case DIV_I64: {
       stack[sp - 1].i64_v = (stack[sp - 1].i64_v / stack[sp].i64_v);
+      sp--;
+      break;
+    }
+    case MOD_I64: {
+      stack[sp - 1].i64_v = (stack[sp - 1].i64_v % stack[sp].i64_v);
       sp--;
       break;
     }
@@ -687,20 +712,8 @@ void run_machine(Machine *machine) {
     case INVOKE_FUNCTION: {
       READ_1BYTE_U8(offset);
       callee = constant_pool[offset].u.func_v;
-      sp = sp + callee->locals;
-      sp++;
 
-      call_info = (CallInfo *)&(stack[sp]);
-      call_info->caller = machine->env.function;
-      call_info->caller_fp = fp;
-      call_info->caller_pc = pc;
-
-      sp = sp + CALL_INFO_ALIGN_SIZE;
-      machine->env.function = callee;
-      pc = callee->code;
-      fp = sp - CALL_INFO_ALIGN_SIZE - callee->locals - callee->args_size;
-      constant_pool = machine->env.function->constant_pool;
-      SAVE_MACHINE_STATE(machine, sp, fp, pc);
+      INVOKE_FUNCTION();
       break;
     }
     case INVOKE_NATIVE_FUNCTION: {
@@ -721,68 +734,78 @@ void run_machine(Machine *machine) {
     case RETURN: {
       call_info = (CallInfo *)&(stack[fp + machine->env.function->locals +
                                       machine->env.function->args_size]);
+      RESTORE_CALLER_ENV(call_info, machine, constant_pool);
       memset(is_gc_object + fp, 0, sp - fp + 1);
       sp = fp;
-      RESTORE_CALLER_ENV(call_info, machine, fp, pc, constant_pool);
+      RESTORE_CALLER_COUNTER(call_info, fp, pc);
       SAVE_MACHINE_STATE(machine, sp, fp, pc);
       break;
     }
     case RETURN_I32: {
       call_info = (CallInfo *)&(stack[fp + machine->env.function->locals +
                                       machine->env.function->args_size]);
+      /* when the functions has zero local space, it is necessary to restore the
+       * environment first because the first field of the call info will be
+       * overwritten by the return value. */
+      RESTORE_CALLER_ENV(call_info, machine, constant_pool);
       stack[fp].i32_v = stack[sp].i32_v;
       /* ignore the value on the top of the stack because it is not a GC object
        */
       memset(is_gc_object + fp, 0, sp - fp);
       sp = fp;
-      RESTORE_CALLER_ENV(call_info, machine, fp, pc, constant_pool);
+      RESTORE_CALLER_COUNTER(call_info, fp, pc);
       SAVE_MACHINE_STATE(machine, sp, fp, pc);
       break;
     }
     case RETURN_I64: {
       call_info = (CallInfo *)&(stack[fp + machine->env.function->locals +
                                       machine->env.function->args_size]);
+      RESTORE_CALLER_ENV(call_info, machine, constant_pool);
       stack[fp].i64_v = stack[sp].i64_v;
       /* ignore the value on the top of the stack because it is not a GC object
        */
       memset(is_gc_object + fp, 0, sp - fp);
       sp = fp;
-      RESTORE_CALLER_ENV(call_info, machine, fp, pc, constant_pool);
+      RESTORE_CALLER_COUNTER(call_info, fp, pc);
       SAVE_MACHINE_STATE(machine, sp, fp, pc);
       break;
     }
     case RETURN_F32: {
       call_info = (CallInfo *)&(stack[fp + machine->env.function->locals +
                                       machine->env.function->args_size]);
+      RESTORE_CALLER_ENV(call_info, machine, constant_pool);
       stack[fp].f32_v = stack[sp].f32_v;
       /* ignore the value on the top of the stack because it is not a GC object
        */
       memset(is_gc_object + fp, 0, sp - fp);
       sp = fp;
-      RESTORE_CALLER_ENV(call_info, machine, fp, pc, constant_pool);
+      RESTORE_CALLER_COUNTER(call_info, fp, pc);
       SAVE_MACHINE_STATE(machine, sp, fp, pc);
       break;
     }
     case RETURN_F64: {
       call_info = (CallInfo *)&(stack[fp + machine->env.function->locals +
                                       machine->env.function->args_size]);
+      RESTORE_CALLER_ENV(call_info, machine, constant_pool);
       stack[fp].f64_v = stack[sp].f64_v;
       /* ignore the value on the top of the stack because it is not a GC object
        */
       memset(is_gc_object + fp, 0, sp - fp);
       sp = fp;
-      RESTORE_CALLER_ENV(call_info, machine, fp, pc, constant_pool);
+      RESTORE_CALLER_COUNTER(call_info, fp, pc);
       SAVE_MACHINE_STATE(machine, sp, fp, pc);
       break;
     }
     case RETURN_OBJECT: {
       call_info = (CallInfo *)&(stack[fp + machine->env.function->locals +
                                       machine->env.function->args_size]);
+      RESTORE_CALLER_ENV(call_info, machine, constant_pool);
       stack[fp].obj_v = stack[sp].obj_v;
       memset(is_gc_object + fp + 1, 0, sp - fp + 1);
       is_gc_object[fp] = TRUE;
       sp = fp;
-      RESTORE_CALLER_ENV(call_info, machine, fp, pc, constant_pool);
+
+      RESTORE_CALLER_COUNTER(call_info, fp, pc);
       SAVE_MACHINE_STATE(machine, sp, fp, pc);
       break;
     }
@@ -804,21 +827,7 @@ void run_machine(Machine *machine) {
       }
       sp = sp + next_call_args_size - 1;
 
-      /* invoke function */
-      sp = sp + callee->locals;
-      sp++;
-
-      call_info = (CallInfo *)&(stack[sp]);
-      call_info->caller = machine->env.function;
-      call_info->caller_fp = fp;
-      call_info->caller_pc = pc;
-
-      sp = sp + CALL_INFO_ALIGN_SIZE;
-      machine->env.function = callee;
-      pc = callee->code;
-      fp = sp - CALL_INFO_ALIGN_SIZE - callee->locals - callee->args_size;
-      constant_pool = machine->env.function->constant_pool;
-      SAVE_MACHINE_STATE(machine, sp, fp, pc);
+      INVOKE_FUNCTION();
       break;
     }
     case JUMP: {
@@ -1069,6 +1078,26 @@ void run_machine(Machine *machine) {
       global_variable = constant_pool[offset].u.global_variable_v;
       STACK_POP_OBJECT(global_variable->value.obj_v);
       global_variable->is_initialized = TRUE;
+      break;
+    }
+    case NEW_CLOSURE: {
+      READ_1BYTE_U8(offset);
+      closure = malloc(sizeof(Closure));
+      closure->captured_values = stack[sp].obj_v;
+      closure->function = constant_pool[offset].u.func_v;
+      stack[sp].obj_v = malloc(sizeof(GCObject));
+      stack[sp].obj_v->kind = GCOBJECT_KIND_CLOSURE;
+      stack[sp].obj_v->u.closure_v = closure;
+      HEAP_PUT(machine->heap, stack[sp].obj_v);
+      break;
+    }
+    case INVOKE_CLOSURE: {
+      READ_1BYTE_U8(offset);
+      closure = stack[sp].obj_v->u.closure_v;
+      stack[sp].obj_v = closure->captured_values;
+      callee = closure->function;
+
+      INVOKE_FUNCTION();
       break;
     }
     }
