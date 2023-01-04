@@ -35,9 +35,6 @@ void test_results_summary();
 Program *create_program_with_single_function(const char *name, Byte *code,
                                              size_t code_length);
 
-void load_program_on_machine(Program *program, Machine *machine,
-                             int main_module_id, int main_function_id);
-
 void copy_byte_code(Function *function, Byte *code, size_t code_length);
 
 #endif /* FLINT_VM_TEST_H */

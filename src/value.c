@@ -180,9 +180,10 @@ void free_gc_object(GCObject *gc_object) {
     free(gc_object->u.arr_v);
   } else if (gc_object->kind == GCOBJECT_KIND_STRING) {
     free_string(gc_object->u.str_v);
-  } else {
+  } else if (gc_object->kind == GCOBJECT_KIND_OBJECT) {
     free(gc_object->u.struct_v->values);
     free(gc_object->u.struct_v);
+  } else if (gc_object->kind == GCOBJECT_KIND_CLOSURE) {
   }
   free(gc_object);
 }
