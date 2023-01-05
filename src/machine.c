@@ -1100,6 +1100,12 @@ void run_machine(Machine *machine) {
       INVOKE_FUNCTION();
       break;
     }
+    case INSTANCE_OF: {
+      READ_1BYTE_U8(offset);
+      stack[sp].i32_v = (stack[sp].obj_v->u.struct_v->meta_data ==
+                         constant_pool[offset].u.struct_meta_data);
+      break;
+    }
     }
   }
 }
