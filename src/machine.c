@@ -90,6 +90,20 @@
   constant_pool = machine->env.function->constant_pool;                        \
   SAVE_MACHINE_STATE(machine, sp, fp, pc);
 
+#define INVOKE_GLOBAL_VARIABLE_INITIALIZER()                                   \
+  callee = global_variable->initializer;                                       \
+  sp = sp + callee->locals;                                                    \
+  sp++;                                                                        \
+  call_info = (CallInfo *)&(stack[sp]);                                        \
+  call_info->caller = machine->env.function;                                   \
+  call_info->caller_fp = fp;                                                   \
+  call_info->caller_pc = pc - 2;                                               \
+  sp = sp + CALL_INFO_ALIGN_SIZE;                                              \
+  machine->env.function = callee;                                              \
+  pc = callee->code;                                                           \
+  fp = sp - CALL_INFO_ALIGN_SIZE - callee->locals;                             \
+  SAVE_MACHINE_STATE(machine, sp, fp, pc);
+
 Machine *create_machine(i32 stack_max_size) {
   Machine *machine;
 
@@ -946,18 +960,7 @@ void run_machine(Machine *machine) {
       if (global_variable->is_initialized) {
         STACK_PUSH_I32(global_variable->value.i32_v);
       } else {
-        callee = global_variable->initializer;
-        sp = sp + callee->locals;
-        sp++;
-        call_info = (CallInfo *)&(stack[sp]);
-        call_info->caller = machine->env.function;
-        call_info->caller_fp = fp;
-        call_info->caller_pc = pc - 2;
-        sp = sp + CALL_INFO_ALIGN_SIZE;
-        machine->env.function = callee;
-        pc = callee->code;
-        fp = sp - CALL_INFO_ALIGN_SIZE - callee->locals;
-        SAVE_MACHINE_STATE(machine, sp, fp, pc);
+        INVOKE_GLOBAL_VARIABLE_INITIALIZER();
       }
       break;
     }
@@ -967,18 +970,7 @@ void run_machine(Machine *machine) {
       if (global_variable->is_initialized) {
         STACK_PUSH_I64(global_variable->value.i64_v);
       } else {
-        callee = global_variable->initializer;
-        sp = sp + callee->locals;
-        sp++;
-        call_info = (CallInfo *)&(stack[sp]);
-        call_info->caller = machine->env.function;
-        call_info->caller_fp = fp;
-        call_info->caller_pc = pc - 2;
-        sp = sp + CALL_INFO_ALIGN_SIZE;
-        machine->env.function = callee;
-        pc = callee->code;
-        fp = sp - CALL_INFO_ALIGN_SIZE - callee->locals;
-        SAVE_MACHINE_STATE(machine, sp, fp, pc);
+        INVOKE_GLOBAL_VARIABLE_INITIALIZER();
       }
       break;
     }
@@ -988,18 +980,7 @@ void run_machine(Machine *machine) {
       if (global_variable->is_initialized) {
         STACK_PUSH_F32(global_variable->value.f32_v);
       } else {
-        callee = global_variable->initializer;
-        sp = sp + callee->locals;
-        sp++;
-        call_info = (CallInfo *)&(stack[sp]);
-        call_info->caller = machine->env.function;
-        call_info->caller_fp = fp;
-        call_info->caller_pc = pc - 2;
-        sp = sp + CALL_INFO_ALIGN_SIZE;
-        machine->env.function = callee;
-        pc = callee->code;
-        fp = sp - CALL_INFO_ALIGN_SIZE - callee->locals;
-        SAVE_MACHINE_STATE(machine, sp, fp, pc);
+        INVOKE_GLOBAL_VARIABLE_INITIALIZER();
       }
       break;
     }
@@ -1009,18 +990,7 @@ void run_machine(Machine *machine) {
       if (global_variable->is_initialized) {
         STACK_PUSH_F64(global_variable->value.f64_v);
       } else {
-        callee = global_variable->initializer;
-        sp = sp + callee->locals;
-        sp++;
-        call_info = (CallInfo *)&(stack[sp]);
-        call_info->caller = machine->env.function;
-        call_info->caller_fp = fp;
-        call_info->caller_pc = pc - 2;
-        sp = sp + CALL_INFO_ALIGN_SIZE;
-        machine->env.function = callee;
-        pc = callee->code;
-        fp = sp - CALL_INFO_ALIGN_SIZE - callee->locals;
-        SAVE_MACHINE_STATE(machine, sp, fp, pc);
+        INVOKE_GLOBAL_VARIABLE_INITIALIZER();
       }
       break;
     }
@@ -1030,18 +1000,7 @@ void run_machine(Machine *machine) {
       if (global_variable->is_initialized) {
         STACK_PUSH_OBJECT(global_variable->value.obj_v);
       } else {
-        callee = global_variable->initializer;
-        sp = sp + callee->locals;
-        sp++;
-        call_info = (CallInfo *)&(stack[sp]);
-        call_info->caller = machine->env.function;
-        call_info->caller_fp = fp;
-        call_info->caller_pc = pc - 2;
-        sp = sp + CALL_INFO_ALIGN_SIZE;
-        machine->env.function = callee;
-        pc = callee->code;
-        fp = sp - CALL_INFO_ALIGN_SIZE - callee->locals;
-        SAVE_MACHINE_STATE(machine, sp, fp, pc);
+        INVOKE_GLOBAL_VARIABLE_INITIALIZER();
       }
       break;
     }
