@@ -11,6 +11,7 @@ typedef struct ByteCodePrinter {
 
 ByteCodePrinter* create_byte_code_printer(FILE* output, BOOLEAN is_verbose_mode);
 void print_byte_code(ByteCodePrinter* printer, Byte *code, size_t code_length);
+void print_function_info(ByteCodePrinter* printer, Function* function);
 void add_printing_error(ByteCodePrinter* printer, const char* message);
 void free_byte_code_printer(ByteCodePrinter* printer);
 
