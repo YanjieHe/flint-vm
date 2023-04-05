@@ -208,7 +208,7 @@ void test_function_native_function_call() {
   native_function = &(program->native_functions[0]);
   native_function->args_size = 1;
   program->native_libraries[0].library_pointer = open_dynamic_library(
-      "../../extensions/input-output/build/libflint-vm-input-output.so");
+      "../extensions/input-output/build/libflint-vm-input-output.so");
   native_function->function_pointer =
       load_function_from_dynamic_library(program->native_libraries[0].library_pointer, "FLINT_VM_println");
   function->constant_pool[1].u.native_func_v = native_function;
