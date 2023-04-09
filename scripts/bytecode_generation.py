@@ -216,6 +216,7 @@ def subtract() -> ByteCode:
         Op.PUSH_I32_2BYTES, 41, 23,
         Op.PUSH_I32_1BYTE, 55,
         Op.SUB_I32,
+        Op.PUSH_I32_0,
         Op.HALT
     ]
     entry = Function("subtract", 0, 0, 0, [], code)
@@ -265,7 +266,7 @@ def loop() -> ByteCode:
         Op.PUSH_LOCAL_I64, local_sum_offset,
 
         # exit
-        Op.HALT
+        Op.PUSH_I32_0, Op.HALT
     ]
     entry = Function("loop", 0, 2, 0, [
         Constant(

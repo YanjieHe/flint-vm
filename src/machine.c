@@ -160,7 +160,7 @@ void print_stack(Machine *machine, i32 size) {
   }
 }
 
-void run_machine(Machine *machine) {
+i32 run_machine(Machine *machine) {
   /* state */
   Byte op;
   Value *stack;
@@ -183,6 +183,7 @@ void run_machine(Machine *machine) {
   Closure *closure;
   i32 next_call_args_size;
   i32 base;
+  i32 exit_code;
 
   stack = machine->stack;
   is_gc_object = machine->is_gc_object;
@@ -216,9 +217,11 @@ void run_machine(Machine *machine) {
     */
     switch (op) {
     case HALT: {
-      SAVE_MACHINE_STATE(machine, sp, fp, pc);
       machine->machine_status = MACHINE_STOPPED;
-      return;
+      exit_code = stack[sp].i32_v;
+      sp--;
+      SAVE_MACHINE_STATE(machine, sp, fp, pc);
+      return exit_code;
     }
     case PUSH_I32_0: {
       STACK_PUSH_I32(0);

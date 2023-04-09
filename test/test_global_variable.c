@@ -12,7 +12,7 @@ void test_global_variable() {
                                                 POP_GLOBAL_F64, 0,
                                                 /* return */
                                                 RETURN};
-  Byte entry_function_code[] = {PUSH_GLOBAL_F64, 0, PUSH_F64, 1, ADD_F64, HALT};
+  Byte entry_function_code[] = {PUSH_GLOBAL_F64, 0, PUSH_F64, 1, ADD_F64, PUSH_I32_0, HALT};
   Function *entry;
   Function *initializer;
 

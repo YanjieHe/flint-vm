@@ -34,7 +34,7 @@ void test_closure_invocation() {
                        /* lambda (x) => x % a */
                        INVOKE_FUNCTION, 0,
                        /* call the closure */
-                       INVOKE_CLOSURE, 1, HALT};
+                       INVOKE_CLOSURE, 1, PUSH_I32_0, HALT};
 
   Function *create_closure;
   Function *closure;

@@ -23,7 +23,7 @@ void test_function_invocation() {
                         PUSH_I32_1BYTE, 35, CAST_I32_TO_F32,
                         /* invoke function */
                         INVOKE_FUNCTION, 0};
-  Byte callee_code[] = {PUSH_LOCAL_F32, 0, PUSH_LOCAL_F32, 1, MUL_F32, HALT};
+  Byte callee_code[] = {PUSH_LOCAL_F32, 0, PUSH_LOCAL_F32, 1, MUL_F32, PUSH_I32_0, HALT};
   Function *caller;
   Function *callee;
 
@@ -72,7 +72,7 @@ void test_function_return_i32() {
                         /* push second argument */
                         PUSH_I32_1BYTE, 80,
                         /* invoke function */
-                        INVOKE_FUNCTION, 0, HALT};
+                        INVOKE_FUNCTION, 0, PUSH_I32_0, HALT};
   Byte callee_code[] = {PUSH_LOCAL_I32, 0,         PUSH_LOCAL_I32, 1,
                         MUL_I32,        RETURN_I32};
   Function *caller;
@@ -120,7 +120,7 @@ void test_function_factorial() {
   Machine *machine;
   Byte caller_code[] = {PUSH_I32_1BYTE, 10, CAST_I32_TO_I64,
                         /* invoke function */
-                        INVOKE_FUNCTION, 0, HALT};
+                        INVOKE_FUNCTION, 0, PUSH_I32_0, HALT};
   Byte callee_code[] = {/* push N */
                         PUSH_LOCAL_I64, 0,
                         /* push 0L */
@@ -193,7 +193,7 @@ void test_function_native_function_call() {
   Machine *machine;
   Function *function;
   NativeFunction *native_function;
-  Byte code[] = {PUSH_STRING, 0, INVOKE_NATIVE_FUNCTION, 1, HALT};
+  Byte code[] = {PUSH_STRING, 0, INVOKE_NATIVE_FUNCTION, 1, PUSH_I32_0, HALT};
 
   program = create_program("Program", 0, 0, 1, 1, 1, 0);
 
@@ -242,7 +242,7 @@ void test_function_tail_call() {
                         MUL_F32,
                         /* return (a * b) */
                         RETURN_F32};
-  Byte entry_code[] = {INVOKE_FUNCTION, 0, HALT};
+  Byte entry_code[] = {INVOKE_FUNCTION, 0, PUSH_I32_0, HALT};
 
   Function *caller;
   Function *callee;
@@ -327,7 +327,7 @@ void test_function_mutual_tail_recursion() {
                       PUSH_LOCAL_I32, 0, PUSH_I32_1, SUB_I32,
                       /* tail call odd(n - 1) */
                       TAIL_CALL, 0};
-  Byte entry_code[] = {PUSH_I32, 0, INVOKE_FUNCTION, 1, HALT};
+  Byte entry_code[] = {PUSH_I32, 0, INVOKE_FUNCTION, 1, PUSH_I32_0, HALT};
 
   Function *odd;
   Function *even;
