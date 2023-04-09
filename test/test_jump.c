@@ -17,7 +17,7 @@ void test_jump() {
                  /* push another number */
                  PUSH_I32_1BYTE, 2,
                  /* divide */
-                 DIV_I32, HALT};
+                 DIV_I32, PUSH_I32_0, HALT};
 
   program = create_program_with_single_function(__FUNCTION__, code,
                                                 sizeof(code) / sizeof(Byte));

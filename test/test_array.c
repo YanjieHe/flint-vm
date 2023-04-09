@@ -7,7 +7,7 @@
 void test_create_an_array() {
   Program *program;
   Machine *machine;
-  Byte code[] = {PUSH_I32_1BYTE, 15, NEW_ARRAY, TYPE_I32, HALT};
+  Byte code[] = {PUSH_I32_1BYTE, 15, NEW_ARRAY, TYPE_I32, PUSH_I32_0, HALT};
 
   program = create_program_with_single_function(__FUNCTION__, code,
                                                 sizeof(code) / sizeof(Byte));
@@ -29,7 +29,7 @@ void test_create_an_array() {
 void test_create_an_illegal_array() {
   Program *program;
   Machine *machine;
-  Byte code[] = {PUSH_I32_1BYTE, 5, MINUS_I32, NEW_ARRAY, TYPE_F32, HALT};
+  Byte code[] = {PUSH_I32_1BYTE, 5, MINUS_I32, NEW_ARRAY, TYPE_F32, PUSH_I32_0, HALT};
 
   program = create_program_with_single_function(__FUNCTION__, code,
                                                 sizeof(code) / sizeof(Byte));
@@ -68,7 +68,7 @@ void test_access_array() {
                  /* push the array offset */
                  PUSH_I32_1BYTE, 3,
                  /* push array element */
-                 PUSH_ARRAY_I64, HALT};
+                 PUSH_ARRAY_I64, PUSH_I32_0, HALT};
   Function *entry;
 
   program = create_program_with_single_function(__FUNCTION__, code,

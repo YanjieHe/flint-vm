@@ -9,7 +9,7 @@
 void test_add() {
   Program *program;
   Machine *machine;
-  Byte code[] = {PUSH_I32_1BYTE, 10, PUSH_I32_2BYTES, 2, 5, ADD_I32, HALT};
+  Byte code[] = {PUSH_I32_1BYTE, 10, PUSH_I32_2BYTES, 2, 5, ADD_I32, PUSH_I32_0, HALT};
 
   program = create_program_with_single_function(__FUNCTION__, code,
                                                 sizeof(code) / sizeof(Byte));

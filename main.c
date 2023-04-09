@@ -29,7 +29,7 @@ int main(int argc, char **argv) {
   int disassemble;
   int i;
   char* function_name;
-
+  i32 exit_code;
 
   file_name = NULL;
   disassemble = 0;
@@ -62,13 +62,13 @@ int main(int argc, char **argv) {
       } else {
         machine = create_machine(STACK_MAX_SIZE);
         load_program(machine, program);
-        run_machine(machine);
+        exit_code = run_machine(machine);
 
         free_byte_code_loader(loader);
         free_program(program);
         free_machine(machine);
 
-        return 0;
+        return exit_code;
       }
     } else {
       printf("Error: The specified file \"%s\" does not exist.\n", file_name);

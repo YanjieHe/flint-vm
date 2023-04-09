@@ -23,7 +23,7 @@ void test_structure() {
                  /* push the value for the second field */
                  PUSH_F64, 2,
                  /* assign the value to the second field */
-                 POP_FIELD_F64, 1, HALT};
+                 POP_FIELD_F64, 1, PUSH_I32_0, HALT};
 
   program = create_program("Program", 0, 1, 1, 0, 0, 0);
 
@@ -90,7 +90,7 @@ void test_structure_get_field_value() {
                  /* push the first field of the object */
                  PUSH_LOCAL_OBJECT, 0, PUSH_FIELD_F32, 0,
                  /* push the second field of the object */
-                 PUSH_LOCAL_OBJECT, 0, PUSH_FIELD_OBJECT, 1, HALT};
+                 PUSH_LOCAL_OBJECT, 0, PUSH_FIELD_OBJECT, 1, PUSH_I32_0, HALT};
 
   program = create_program("Program", 0, 1, 1, 0, 0, 0);
 
