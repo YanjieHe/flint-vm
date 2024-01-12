@@ -122,6 +122,31 @@ void print_function_info(ByteCodePrinter *printer, Function *function) {
   print_byte_code(printer, function->code, function->code_length);
 }
 
+void print_native_function_info(ByteCodePrinter *printer,
+                                NativeFunction *native_function) {
+  char *function_name;
+  char *library_path;
+
+  function_name = str_to_c_str(native_function->func_name);
+  library_path = str_to_c_str(native_function->library->library_path);
+  printf("native function: %s\n", function_name);
+  printf("library path: %s\n", library_path);
+  printf("args_size = %d\n", native_function->args_size);
+
+  free(function_name);
+  free(library_path);
+}
+
+void print_native_library_info(ByteCodePrinter *printer,
+                               NativeLibrary *native_library) {
+  char *library_path;
+
+  library_path = str_to_c_str(native_library->library_path);
+  printf("library path: %s\n", library_path);
+
+  free(library_path);
+}
+
 void add_printing_error(ByteCodePrinter *printer, const char *message) {
   append_error_to_error_list(&(printer->error_messages), message);
 }

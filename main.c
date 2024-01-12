@@ -28,7 +28,7 @@ int main(int argc, char **argv) {
 
   int disassemble;
   int i;
-  char* function_name;
+  char *function_name;
   i32 exit_code;
 
   file_name = NULL;
@@ -57,6 +57,17 @@ int main(int argc, char **argv) {
         printer = create_byte_code_printer(stdout, TRUE);
         for (i = 0; i < program->function_count; i++) {
           print_function_info(printer, &(program->functions[i]));
+          printf("\n");
+        }
+
+        for (i = 0; i < program->native_library_count; i++) {
+          print_native_library_info(printer, &(program->native_libraries[i]));
+          printf("\n");
+        }
+
+        for (i = 0; i < program->native_function_count; i++) {
+          print_native_function_info(printer, &(program->native_functions[i]));
+          printf("\n");
         }
 
       } else {
