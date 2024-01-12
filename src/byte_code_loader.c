@@ -416,7 +416,12 @@ void load_native_library(Program *program, ByteCodeLoader *loader,
 
   lib_path = str_to_c_str(native_library->library_path);
   native_library->library_pointer = open_dynamic_library(lib_path);
-  free(lib_path);
+  if (native_library->library_pointer) {
+    free(lib_path);
+  } else {
+    add_loading_error(loader, "the dynamic library cannot be loaded.");
+    free(lib_path);
+  }
 }
 
 void load_native_function(Program *program, ByteCodeLoader *loader,
@@ -428,7 +433,7 @@ void load_native_function(Program *program, ByteCodeLoader *loader,
   STOP_IF_ANY_LOADING_ERROR(loader,
                             "fail to read the name of the native function");
 
-  native_function->args_size = read_byte(loader);
+  native_function->args_size = read_u16(loader);
   STOP_IF_ANY_LOADING_ERROR(
       loader, "fail to read the args size of the native function");
 
@@ -441,8 +446,12 @@ void load_native_function(Program *program, ByteCodeLoader *loader,
 
   native_function->function_pointer = load_function_from_dynamic_library(
       native_function->library->library_pointer, func_name);
-
-  free(func_name);
+  if (native_function->function_pointer) {
+    free(func_name);
+  } else {
+    add_loading_error(loader, "the function from the dynamic library cannot be loaded.");
+    free(func_name);
+  }
 }
 
 Program *read_byte_code_file(ByteCodeLoader *loader) {
