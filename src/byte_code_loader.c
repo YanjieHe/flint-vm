@@ -334,7 +334,7 @@ void load_function(Program *program, ByteCodeLoader *loader,
       break;
     }
     case CONSTANT_KIND_GLOBAL_VARIABLE: {
-      function->constant_pool[i].kind = CONSTANT_KIND_FUNCTION;
+      function->constant_pool[i].kind = CONSTANT_KIND_GLOBAL_VARIABLE;
       function->constant_pool[i].u.global_variable_v =
           &(program->global_variables[read_i32(loader)]);
       break;
@@ -376,6 +376,7 @@ void load_global_variable(Program *program, ByteCodeLoader *loader,
 
   if (initializer_offset >= 0 && initializer_offset < program->function_count) {
     global_variable->initializer = &(program->functions[initializer_offset]);
+    global_variable->is_initialized = FALSE;
   } else {
     add_loading_error(loader, "initializer offset not in the range");
 
@@ -449,7 +450,8 @@ void load_native_function(Program *program, ByteCodeLoader *loader,
   if (native_function->function_pointer) {
     free(func_name);
   } else {
-    add_loading_error(loader, "the function from the dynamic library cannot be loaded.");
+    add_loading_error(
+        loader, "the function from the dynamic library cannot be loaded.");
     free(func_name);
   }
 }

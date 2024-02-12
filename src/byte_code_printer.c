@@ -67,7 +67,7 @@ void print_function_info(ByteCodePrinter *printer, Function *function) {
   function_name = str_to_c_str(function->name);
   printf("function: %s\n", function_name);
   free(function_name);
-  printf("stack= %d, ", function->stack);
+  printf("stack = %d, ", function->stack);
   printf("args_size = %d, ", function->args_size);
   printf("locals = %d\n", function->locals);
 

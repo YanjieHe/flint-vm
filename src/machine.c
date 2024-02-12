@@ -97,7 +97,7 @@
   call_info = (CallInfo *)&(stack[sp]);                                        \
   call_info->caller = machine->env.function;                                   \
   call_info->caller_fp = fp;                                                   \
-  call_info->caller_pc = pc - 2;                                               \
+  call_info->caller_pc = pc;                                                   \
   sp = sp + CALL_INFO_ALIGN_SIZE;                                              \
   machine->env.function = callee;                                              \
   pc = callee->code;                                                           \
