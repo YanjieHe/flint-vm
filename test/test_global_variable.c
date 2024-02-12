@@ -7,12 +7,13 @@
 void test_global_variable() {
   Program *program;
   Machine *machine;
-  Byte global_variable_initialization_code[] = {PUSH_F64_1,
-                                                /* invoke function */
-                                                POP_GLOBAL_F64, 0,
-                                                /* return */
-                                                RETURN};
-  Byte entry_function_code[] = {PUSH_GLOBAL_F64, 0, PUSH_F64, 1, ADD_F64, PUSH_I32_0, HALT};
+  Byte global_variable_initialization_code[] = {
+      /* The value assigned to the global variable. */
+      PUSH_F64_1,
+      /* return */
+      RETURN_F64};
+  Byte entry_function_code[] = {PUSH_GLOBAL_F64, 0,          PUSH_F64, 1,
+                                ADD_F64,         PUSH_I32_0, HALT};
   Function *entry;
   Function *initializer;
 
