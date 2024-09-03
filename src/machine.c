@@ -396,6 +396,10 @@ i32 run_machine(Machine *machine) {
       stack[sp].f64_v = -stack[sp].f64_v;
       break;
     }
+    case LOGICAL_NOT: {
+      stack[sp].i32_v = !(stack[sp].i32_v);
+      break;
+    }
     case EQ_I32: {
       stack[sp - 1].i32_v = (stack[sp - 1].i32_v == stack[sp].i32_v);
       sp--;
@@ -514,6 +518,44 @@ i32 run_machine(Machine *machine) {
     case LE_F64: {
       stack[sp - 1].i32_v = (stack[sp - 1].f64_v <= stack[sp].f64_v);
       sp--;
+      break;
+    }
+    case BIT_AND_I32: {
+      stack[sp - 1].i32_v = (stack[sp - 1].i32_v & stack[sp].i32_v);
+      sp--;
+      break;
+    }
+    case BIT_AND_I64: {
+      stack[sp - 1].i64_v = (stack[sp - 1].i64_v & stack[sp].i64_v);
+      sp--;
+      break;
+    }
+    case BIT_OR_I32: {
+      stack[sp - 1].i32_v = (stack[sp - 1].i32_v | stack[sp].i32_v);
+      sp--;
+      break;
+    }
+    case BIT_OR_I64: {
+      stack[sp - 1].i64_v = (stack[sp - 1].i64_v | stack[sp].i64_v);
+      sp--;
+      break;
+    }
+    case BIT_XOR_I32: {
+      stack[sp - 1].i32_v = (stack[sp - 1].i32_v ^ stack[sp].i32_v);
+      sp--;
+      break;
+    }
+    case BIT_XOR_I64: {
+      stack[sp - 1].i64_v = (stack[sp - 1].i64_v ^ stack[sp].i64_v);
+      sp--;
+      break;
+    }
+    case BIT_NOT_I32: {
+      stack[sp].i32_v = ~(stack[sp].i32_v);
+      break;
+    }
+    case BIT_NOT_I64: {
+      stack[sp].i64_v = ~(stack[sp].i64_v);
       break;
     }
     case NEW_ARRAY: {

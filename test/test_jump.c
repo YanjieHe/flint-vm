@@ -1,9 +1,9 @@
 #include "test_jump.h"
-#include "test.h"
-#include "opcode.h"
-#include "type.h"
 #include "byte_code_loader.h"
 #include "byte_code_printer.h"
+#include "opcode.h"
+#include "test.h"
+#include "type.h"
 
 void test_jump() {
   Program *program;
@@ -37,6 +37,49 @@ void test_loop() {
   Program *program;
   Machine *machine;
   ByteCodeLoader *loader;
+  Byte code[] = {/* Push 0 to the stack */
+                 PUSH_I64, 0,
+                 /* Pop stack top to local variable 0 */
+                 POP_LOCAL_I64, 0,
+                 /* Push local variable 0 to stack */
+                 PUSH_LOCAL_I64, 0,
+                 /* Push constant 0 to the stack */
+                 PUSH_I64_0,
+                 /* Pop stack top to local variable 1 */
+                 POP_LOCAL_I64, 1,
+                 /* Push local variable 0 to stack */
+                 PUSH_LOCAL_I64, 0,
+                 /* Push constant 0 to the stack */
+                 PUSH_I64_0,
+                 /* Compare if greater than */
+                 GT_I64,
+                 /* Conditional jump if false */
+                 JUMP_IF_FALSE, 0, 14,
+                 /* Push local variable 1 to stack */
+                 PUSH_LOCAL_I64, 1,
+                 /* Push local variable 0 to stack */
+                 PUSH_LOCAL_I64, 0,
+                 /* Add top two stack values */
+                 ADD_I64,
+                 /* Pop stack top to local variable 1 */
+                 POP_LOCAL_I64, 1,
+                 /* Push local variable 0 to stack */
+                 PUSH_LOCAL_I64, 0,
+                 /* Push constant 1 to the stack */
+                 PUSH_I64_1,
+                 /* Subtract top two stack values */
+                 SUB_I64,
+                 /* Pop stack top to local variable 0 */
+                 POP_LOCAL_I64, 0,
+                 /* Unconditional jump */
+                 JUMP, 255, 233,
+                 /* Push local variable 1 to stack */
+                 PUSH_LOCAL_I64, 1,
+                 /* Push constant 0 to the stack */
+                 PUSH_I32_0,
+                 /* Halt the execution */
+                 HALT};
+  size_t i;
 
   loader = create_byte_code_loader("byte_code/loop");
   ASSERT_NOT_EQUAL(loader, NULL);
@@ -45,6 +88,11 @@ void test_loop() {
   show_errors(loader->error_messages);
   ASSERT_NOT_EQUAL(program, NULL);
   ASSERT_EQUAL(loader->error_messages, NULL);
+
+  ASSERT_EQUAL(program->entry->code_length, sizeof(code) / sizeof(Byte));
+  for (i = 0; i < sizeof(code) / sizeof(Byte); i++) {
+    ASSERT_EQUAL(program->entry->code[i], code[i]);
+  }
 
   machine = create_machine(100);
   load_program(machine, program);
