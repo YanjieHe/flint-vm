@@ -71,6 +71,7 @@ int main(int argc, char **argv) {
   test_global_variable();
 
   test_closure_invocation();
+  test_function_reference_passing();
 
   test_results_summary();
 
