@@ -150,7 +150,12 @@ void print_stack(Machine *machine, i32 size) {
   for (i = 0; i < size; i++) {
     printf("#%d: ", i);
     if (machine->is_gc_object[i]) {
-      printf("Object. type id: %d\n", machine->stack[i].obj_v->kind);
+      printf("Object pointer: %ld. ", (long)(machine->stack[i].obj_v));
+      if (machine->stack[i].obj_v) {
+        printf("Object. type id: %d\n", machine->stack[i].obj_v->kind);
+      } else {
+        printf("Object. NULL\n");
+      }
     } else {
       printf("\tInt32: %d\n", machine->stack[i].i32_v);
       printf("\tInt64: %ld\n", machine->stack[i].i64_v);
@@ -288,6 +293,12 @@ i32 run_machine(Machine *machine) {
     case PUSH_STRING: {
       READ_1BYTE_U8(offset);
       STACK_PUSH_OBJECT(constant_pool[offset].u.obj_v);
+      break;
+    }
+    case PUSH_NULL: {
+      sp++;
+      stack[sp].obj_v = NULL;
+      is_gc_object[sp] = 1;
       break;
     }
     case ADD_I32: {
@@ -1096,12 +1107,17 @@ i32 run_machine(Machine *machine) {
       break;
     }
     case INVOKE_CLOSURE: {
-      READ_1BYTE_U8(offset);
       closure = stack[sp].obj_v->u.closure_v;
       stack[sp].obj_v = closure->captured_values;
-      callee = closure->function;
-
-      INVOKE_FUNCTION();
+      if (closure->captured_values == NULL) {
+        callee = closure->function;
+        sp--;
+        /* discard the NULL pointer. */
+        INVOKE_FUNCTION();
+      } else {
+        callee = closure->function;
+        INVOKE_FUNCTION();
+      }
       break;
     }
     case INSTANCE_OF: {

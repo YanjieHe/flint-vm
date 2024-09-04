@@ -1,6 +1,6 @@
 #include "test_closure.h"
-#include "test.h"
 #include "opcode.h"
+#include "test.h"
 #include "type.h"
 
 void test_closure_invocation() {
@@ -34,7 +34,7 @@ void test_closure_invocation() {
                        /* lambda (x) => x % a */
                        INVOKE_FUNCTION, 0,
                        /* call the closure */
-                       INVOKE_CLOSURE, 1, PUSH_I32_0, HALT};
+                       INVOKE_CLOSURE, PUSH_I32_0, HALT};
 
   Function *create_closure;
   Function *closure;
@@ -102,6 +102,74 @@ void test_closure_invocation() {
   load_program(machine, program);
   run_machine(machine);
   ASSERT_EQUAL(machine->stack[machine->sp].i64_v, 39 % 7);
+  ASSERT_EQUAL(machine->machine_status, MACHINE_STOPPED);
+
+  free_program(program);
+  free_machine(machine);
+}
+
+void test_function_reference_passing() {
+  Program *program;
+  Machine *machine;
+
+  Byte function_code[] = {PUSH_LOCAL_I32, 0,         PUSH_I32_1BYTE, 2,
+                          MUL_I32,        RETURN_I32};
+
+  Byte function_reference_code[] = {
+      PUSH_I32_1BYTE, 10, PUSH_LOCAL_OBJECT, 0, INVOKE_CLOSURE, RETURN_I32};
+
+  Byte entry_code[] = {PUSH_NULL, NEW_CLOSURE, 0,   INVOKE_FUNCTION,
+                       1,         PUSH_I32_0,  HALT};
+
+  Function *function;
+  Function *function_reference;
+  Function *entry;
+
+  StructureMetaData *captured_values;
+
+  program = create_program("Program", 0, 0, 3, 0, 0, 0);
+
+  function = &(program->functions[0]);
+  copy_byte_code(function, function_code, sizeof(function_code) / sizeof(Byte));
+  function->name = make_string("multiply2");
+  function->args_size = 1;
+  function->locals = 0;
+  function->stack = 0;
+  function->constant_pool_size = 0;
+  function->constant_pool = NULL;
+
+  function_reference = &(program->functions[1]);
+  copy_byte_code(function_reference, function_reference_code,
+                 sizeof(function_reference_code) / sizeof(Byte));
+  function_reference->name = make_string("function_caller");
+  function_reference->args_size = 1;
+  function_reference->locals = 0;
+  function_reference->stack = 0;
+  function_reference->constant_pool_size = 0;
+  function_reference->constant_pool = NULL;
+
+  /* entry function */
+  entry = &(program->functions[2]);
+  copy_byte_code(entry, entry_code, sizeof(entry_code) / sizeof(Byte));
+  entry->name = make_string("entry");
+  entry->args_size = 0;
+  entry->locals = 0;
+  entry->stack = 0;
+  entry->constant_pool_size = 2;
+  entry->constant_pool = malloc(sizeof(Constant) * entry->constant_pool_size);
+
+  entry->constant_pool[0].kind = CONSTANT_KIND_FUNCTION;
+  entry->constant_pool[0].u.func_v = function;
+  entry->constant_pool[1].kind = CONSTANT_KIND_FUNCTION;
+  entry->constant_pool[1].u.func_v = function_reference;
+
+  program->entry = entry;
+
+  machine = create_machine(100);
+
+  load_program(machine, program);
+  run_machine(machine);
+  ASSERT_EQUAL(machine->stack[machine->sp].i32_v, 10 * 2);
   ASSERT_EQUAL(machine->machine_status, MACHINE_STOPPED);
 
   free_program(program);

@@ -99,9 +99,13 @@ void print_function_info(ByteCodePrinter *printer, Function *function) {
     case CONSTANT_KIND_STRING:
       printf("CONSTANT_KIND_STRING");
       break;
-    case CONSTANT_KIND_FUNCTION:
+    case CONSTANT_KIND_FUNCTION: {
       printf("CONSTANT_KIND_FUNCTION");
+      function_name = str_to_c_str(function->constant_pool[i].u.func_v->name);
+      printf(" %s", function_name);
+      free(function_name);
       break;
+    }
     case CONSTANT_KIND_STRUCTURE_META_DATA:
       printf("CONSTANT_KIND_STRUCTURE_META_DATA");
       break;
