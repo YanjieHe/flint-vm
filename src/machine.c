@@ -1,4 +1,5 @@
 #include "machine.h"
+#include "logger.h"
 #include "opcode.h"
 #include "type.h"
 #include <stdio.h>
@@ -220,6 +221,7 @@ i32 run_machine(Machine *machine) {
     printf("\n");
     printf("op = %s\n", opcode_info[op][0]);
     */
+    /* log_message(LOG_LEVEL_DEBUG, "pc = %d, op = %s", pc - machine->env.function->code, opcode_info[op][0]); */
     switch (op) {
     case HALT: {
       machine->machine_status = MACHINE_STOPPED;
