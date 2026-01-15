@@ -14,3 +14,8 @@ if(FLINT_VM_DEBUG_MODE)
     message(STATUS "FLINT_VM_DEBUG_MODE is ON")
     target_compile_definitions(flint-vm-test PRIVATE FLINT_VM_DEBUG_MODE)
 endif()
+
+file(COPY
+    ${PROJECT_SOURCE_DIR}/test/byte_code
+    DESTINATION ${CMAKE_BINARY_DIR}
+)
