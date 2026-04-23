@@ -23,7 +23,7 @@ void *load_function_from_dynamic_library(void *library_pointer,
 #ifdef RUNNING_ON_WINDOWS
   return GetProcAddress((HMODULE)library_pointer, function_name);
 #else
-  dlsym(library_pointer, function_name);
+  return dlsym(library_pointer, function_name);
 #endif
 }
 

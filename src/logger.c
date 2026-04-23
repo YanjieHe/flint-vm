@@ -24,17 +24,22 @@ void log_close() {
   }
 }
 
-void log_message(LogLevel level, const char *format, ...) {
+void log_message_impl(LogLevel level, const char *format, ...) {
+  time_t t;
+  struct tm *tm_info;
+  char time_buf[20];
+  const char *level_str;
+  va_list args;
+
   if (level < logger.level) {
     return;
   }
 
-  time_t t = time(NULL);
-  struct tm *tm_info = localtime(&t);
-  char time_buf[20];
+  t = time(NULL);
+  tm_info = localtime(&t);
   strftime(time_buf, 20, "%Y-%m-%d %H:%M:%S", tm_info);
 
-  const char *level_str = "";
+  level_str = "";
   switch (level) {
   case LOG_LEVEL_DEBUG:
     level_str = "DEBUG";
@@ -50,7 +55,6 @@ void log_message(LogLevel level, const char *format, ...) {
     break;
   }
 
-  va_list args;
   if (logger.file) {
     va_start(args, format);
     fprintf(logger.file, "[%s] %s: ", time_buf, level_str);

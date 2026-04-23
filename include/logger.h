@@ -24,13 +24,14 @@ extern Logger logger;
 int log_init(const char *file_name, LogLevel level);
 void set_log_level(LogLevel level);
 void log_close();
-void log_message(LogLevel level, const char *format, ...);
+void log_message_impl(LogLevel level, const char *format, ...);
+#define log_message(x) log_message_impl x
 
 #else
 
 #define log_init(file_name, level) ((void)0)
 #define log_close() ((void)0)
-#define log_message(level, format, ...) ((void)0)
+#define log_message(x) ((void)0)
 
 #endif /* FLINT_VM_DEBUG_MODE */
 

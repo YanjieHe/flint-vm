@@ -1,30 +1,36 @@
 #ifndef FLINT_VM_TEST_H
 #define FLINT_VM_TEST_H
 
+#include "machine.h"
 #include "value.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "machine.h"
+
+#define RUN_TEST(func)                                                         \
+  do {                                                                         \
+    printf("--- %s ---\n", #func);                                             \
+    func();                                                                    \
+  } while (0)
 
 #define ASSERT_EQUAL(ACTUAL, EXPECTED)                                         \
   if ((ACTUAL) == (EXPECTED)) {                                                \
     total_tests++;                                                             \
     passed_tests++;                                                            \
-    printf("Test case suceeded: \"%s\" (line %d)\n", __FUNCTION__, __LINE__);  \
+    printf("  passed (line %d)\n", __LINE__);                                  \
   } else {                                                                     \
     total_tests++;                                                             \
-    printf("Test case failed: \"%s\" (line %d)\n", __FUNCTION__, __LINE__);    \
+    printf("  FAILED (line %d)\n", __LINE__);                                  \
   }
 
 #define ASSERT_NOT_EQUAL(ACTUAL, EXPECTED)                                     \
   if ((ACTUAL) != (EXPECTED)) {                                                \
     total_tests++;                                                             \
     passed_tests++;                                                            \
-    printf("Test case suceeded: \"%s\" (line %d)\n", __FUNCTION__, __LINE__);  \
+    printf("  passed (line %d)\n", __LINE__);                                  \
   } else {                                                                     \
     total_tests++;                                                             \
-    printf("Test case failed: \"%s\" (line %d)\n", __FUNCTION__, __LINE__);    \
+    printf("  FAILED (line %d)\n", __LINE__);                                  \
   }
 
 extern int total_tests;

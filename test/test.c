@@ -4,11 +4,11 @@
 
 #include "test_arithmetic.h"
 #include "test_array.h"
+#include "test_closure.h"
 #include "test_function.h"
+#include "test_global_variable.h"
 #include "test_jump.h"
 #include "test_structure.h"
-#include "test_global_variable.h"
-#include "test_closure.h"
 
 int total_tests;
 int passed_tests;
@@ -48,30 +48,30 @@ int main(int argc, char **argv) {
   total_tests = 0;
   passed_tests = 0;
 
-  test_add();
-  test_subtract();
+  RUN_TEST(test_add);
+  RUN_TEST(test_subtract);
 
-  test_create_an_array();
-  test_create_an_illegal_array();
-  test_access_array();
+  RUN_TEST(test_create_an_array);
+  RUN_TEST(test_create_an_illegal_array);
+  RUN_TEST(test_access_array);
 
-  test_function_invocation();
-  test_function_return_i32();
-  test_function_factorial();
-  test_function_native_function_call();
-  test_function_tail_call();
-  test_function_mutual_tail_recursion();
+  RUN_TEST(test_function_invocation);
+  RUN_TEST(test_function_return_i32);
+  RUN_TEST(test_function_factorial);
+  RUN_TEST(test_function_native_function_call);
+  RUN_TEST(test_function_tail_call);
+  RUN_TEST(test_function_mutual_tail_recursion);
 
-  test_jump();
-  test_loop();
+  RUN_TEST(test_jump);
+  RUN_TEST(test_loop);
 
-  test_structure();
-  test_structure_get_field_value();
+  RUN_TEST(test_structure);
+  RUN_TEST(test_structure_get_field_value);
 
-  test_global_variable();
+  RUN_TEST(test_global_variable);
 
-  test_closure_invocation();
-  test_function_reference_passing();
+  RUN_TEST(test_closure_invocation);
+  RUN_TEST(test_function_reference_passing);
 
   test_results_summary();
 

@@ -1,9 +1,9 @@
 #include "byte_code_loader.h"
-#include <stdlib.h>
-#include <string.h>
+#include "load_library.h"
 #include "opcode.h"
 #include <math.h>
-#include "load_library.h"
+#include <stdlib.h>
+#include <string.h>
 
 #define STOP_IF_ANY_LOADING_ERROR(LOADER, MESSAGE)                             \
   if ((LOADER)->error_messages) {                                              \
@@ -20,10 +20,10 @@
   }
 
 /*
-* @brief create a byte code loader
-* @param file_name byte code file
-* @return The byte code loader. If the file doesn't exist, returns NULL.
-*/
+ * @brief create a byte code loader
+ * @param file_name byte code file
+ * @return The byte code loader. If the file doesn't exist, returns NULL.
+ */
 ByteCodeLoader *create_byte_code_loader(char *file_name) {
   FILE *file;
   ByteCodeLoader *loader;
@@ -159,8 +159,12 @@ f32 read_f32(ByteCodeLoader *loader) {
   BOOLEAN *bit_ptr;
   int i;
   int j;
+  int sign;
+  int exponent;
   Byte *bytes;
   Byte bit;
+  f32 mantissa;
+  f32 cur;
 
   bit_ptr = &(bits[0]);
   bytes = read_bytes(loader, sizeof(f32));
@@ -178,14 +182,14 @@ f32 read_f32(ByteCodeLoader *loader) {
     }
   }
 
-  int sign = bits[0] ? (-1) : (+1);
-  int exponent = 0;
+  sign = bits[0] ? (-1) : (+1);
+  exponent = 0;
   for (i = 0; i < 8; i++) {
     exponent = exponent + bits[1 + i] * (1 << (8 - 1 - i));
   }
   exponent = exponent - 127;
-  f32 mantissa = 1.0;
-  f32 cur = 0.5;
+  mantissa = 1.0;
+  cur = 0.5;
   for (i = 0; i < 23; i++) {
     mantissa = mantissa + bits[1 + 8 + i] * cur;
     cur = cur / 2;
@@ -198,8 +202,12 @@ f64 read_f64(ByteCodeLoader *loader) {
   BOOLEAN *bit_ptr;
   int i;
   int j;
+  int sign;
+  int exponent;
   Byte *bytes;
   Byte bit;
+  f64 mantissa;
+  f64 cur;
 
   bit_ptr = &(bits[0]);
   bytes = read_bytes(loader, sizeof(f64));
@@ -218,14 +226,14 @@ f64 read_f64(ByteCodeLoader *loader) {
     }
   }
 
-  int sign = bits[0] ? (-1) : (+1);
-  int exponent = 0;
+  sign = bits[0] ? (-1) : (+1);
+  exponent = 0;
   for (i = 0; i < 11; i++) {
     exponent = exponent + bits[1 + i] * (1 << (11 - 1 - i));
   }
   exponent = exponent - 1023;
-  f64 mantissa = 1.0;
-  f64 cur = 0.5;
+  mantissa = 1.0;
+  cur = 0.5;
   for (i = 0; i < 52; i++) {
     mantissa = mantissa + bits[1 + 11 + i] * cur;
     cur = cur / 2;

@@ -161,7 +161,7 @@ void print_stack(Machine *machine, i32 size) {
       printf("\tInt32: %d\n", machine->stack[i].i32_v);
       printf("\tInt64: %ld\n", machine->stack[i].i64_v);
       printf("\tFloat32: %f\n", machine->stack[i].f32_v);
-      printf("\tFloat64: %lf\n", machine->stack[i].f64_v);
+      printf("\tFloat64: %f\n", machine->stack[i].f64_v);
     }
   }
 }
@@ -221,7 +221,7 @@ i32 run_machine(Machine *machine) {
     printf("\n");
     printf("op = %s\n", opcode_info[op][0]);
     */
-    /* log_message(LOG_LEVEL_DEBUG, "pc = %d, op = %s", pc - machine->env.function->code, opcode_info[op][0]); */
+    /* log_message((LOG_LEVEL_DEBUG, "pc = %d, op = %s", pc - machine->env.function->code, opcode_info[op][0])); */
     switch (op) {
     case HALT: {
       machine->machine_status = MACHINE_STOPPED;
@@ -794,12 +794,15 @@ i32 run_machine(Machine *machine) {
       machine->fp = sp - native_function->args_size + 1;
       machine->sp = sp;
       machine->pc = pc;
-      if (((int (*)(Machine *))(native_function->function_pointer))(machine) ==
-          -1) {
-        machine->machine_status = RUNTIME_ERROR_NATIVE_FUNCTION_ERROR;
-        return;
-      } else {
-        sp = machine->sp;
+      {
+        union { void *p; int (*f)(Machine *); } func_conv;
+        func_conv.p = native_function->function_pointer;
+        if (func_conv.f(machine) == -1) {
+          machine->machine_status = RUNTIME_ERROR_NATIVE_FUNCTION_ERROR;
+          return;
+        } else {
+          sp = machine->sp;
+        }
       }
       break;
     }
