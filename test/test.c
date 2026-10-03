@@ -7,6 +7,7 @@
 #include "test_closure.h"
 #include "test_function.h"
 #include "test_global_variable.h"
+#include "test_interface.h"
 #include "test_jump.h"
 #include "test_structure.h"
 
@@ -23,7 +24,7 @@ Program *create_program_with_single_function(const char *name, Byte *code,
   Program *program;
   Function *entry;
 
-  program = create_program("Program", 0, 0, 1, 0, 0, 0);
+  program = create_program("Program", 0, 0, 1, 0, 0, 0, 0);
 
   entry = &(program->functions[0]);
   copy_byte_code(entry, code, code_length);
@@ -72,6 +73,13 @@ int main(int argc, char **argv) {
 
   RUN_TEST(test_closure_invocation);
   RUN_TEST(test_function_reference_passing);
+
+  RUN_TEST(test_interface_vtable);
+  RUN_TEST(test_resolve_interface_method_references);
+  RUN_TEST(test_invoke_interface);
+  RUN_TEST(test_interface_dispatches_by_receiver_type);
+  RUN_TEST(test_interface_dispatches_nonzero_method_index);
+  RUN_TEST(test_interface_dispatches_multiple_interfaces);
 
   test_results_summary();
 

@@ -62,6 +62,7 @@ void print_byte_code(ByteCodePrinter *printer, Byte *code, size_t code_length) {
 
 void print_function_info(ByteCodePrinter *printer, Function *function) {
   char *function_name;
+  char *interface_name;
   int i;
 
   function_name = str_to_c_str(function->name);
@@ -115,6 +116,25 @@ void print_function_info(ByteCodePrinter *printer, Function *function) {
     case CONSTANT_KIND_NATIVE_FUNCTION:
       printf("CONSTANT_KIND_NATIVE_FUNCTION");
       break;
+    case CONSTANT_KIND_INTERFACE_META_DATA: {
+      printf("CONSTANT_KIND_INTERFACE_META_DATA");
+      interface_name =
+          str_to_c_str(function->constant_pool[i].u.interface_meta_data->name);
+      printf(" interface_index = %d, name = %s",
+             function->constant_pool[i].u.interface_meta_data->interface_index,
+             interface_name);
+      free(interface_name);
+      break;
+    }
+    case CONSTANT_KIND_INTERFACE_METHOD_REFERENCE: {
+      printf("CONSTANT_KIND_INTERFACE_METHOD_REFERENCE");
+      printf(" interface_index = %d, method_index = %d, args_size = %d",
+             function->constant_pool[i]
+                 .u.interface_method_ref_v->interface_index,
+             function->constant_pool[i].u.interface_method_ref_v->method_index,
+             function->constant_pool[i].u.interface_method_ref_v->args_size);
+      break;
+    }
     default:
       printf("Unknown ConstantKind value");
       break;

@@ -1,6 +1,4 @@
 #include "test_jump.h"
-#include "byte_code_loader.h"
-#include "byte_code_printer.h"
 #include "opcode.h"
 #include "test.h"
 #include "type.h"
@@ -36,7 +34,7 @@ void test_jump() {
 void test_loop() {
   Program *program;
   Machine *machine;
-  ByteCodeLoader *loader;
+  Function *entry;
   Byte code[] = {/* Push 0 to the stack */
                  PUSH_I64, 0,
                  /* Pop stack top to local variable 0 */
@@ -79,20 +77,15 @@ void test_loop() {
                  PUSH_I32_0,
                  /* Halt the execution */
                  HALT};
-  size_t i;
 
-  loader = create_byte_code_loader("byte_code/loop");
-  ASSERT_NOT_EQUAL(loader, NULL);
-
-  program = read_byte_code_file(loader);
-  show_errors(loader->error_messages);
-  ASSERT_NOT_EQUAL(program, NULL);
-  ASSERT_EQUAL(loader->error_messages, NULL);
-
-  ASSERT_EQUAL(program->entry->code_length, sizeof(code) / sizeof(Byte));
-  for (i = 0; i < sizeof(code) / sizeof(Byte); i++) {
-    ASSERT_EQUAL(program->entry->code[i], code[i]);
-  }
+  program = create_program_with_single_function(__FUNCTION__, code,
+                                                sizeof(code) / sizeof(Byte));
+  entry = program->entry;
+  entry->locals = 2;
+  entry->constant_pool_size = 1;
+  entry->constant_pool = malloc(sizeof(Constant));
+  entry->constant_pool[0].kind = CONSTANT_KIND_I64;
+  entry->constant_pool[0].u.i64_v = 100;
 
   machine = create_machine(100);
   load_program(machine, program);
@@ -101,7 +94,6 @@ void test_loop() {
   ASSERT_EQUAL(machine->stack[machine->sp].i64_v, 5050L);
   ASSERT_EQUAL(machine->machine_status, MACHINE_STOPPED);
 
-  free_byte_code_loader(loader);
   free_program(program);
   free_machine(machine);
 }

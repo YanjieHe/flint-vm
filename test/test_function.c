@@ -27,7 +27,7 @@ void test_function_invocation() {
   Function *caller;
   Function *callee;
 
-  program = create_program("Program", 0, 0, 2, 0, 0, 0);
+  program = create_program("Program", 0, 0, 2, 0, 0, 0, 0);
 
   /* caller function */
   caller = &(program->functions[0]);
@@ -78,7 +78,7 @@ void test_function_return_i32() {
   Function *caller;
   Function *callee;
 
-  program = create_program("Program", 0, 0, 2, 0, 0, 0);
+  program = create_program("Program", 0, 0, 2, 0, 0, 0, 0);
 
   /* caller function */
   caller = &(program->functions[0]);
@@ -150,7 +150,7 @@ void test_function_factorial() {
   Function *caller;
   Function *callee;
 
-  program = create_program("Program", 0, 0, 2, 0, 0, 0);
+  program = create_program("Program", 0, 0, 2, 0, 0, 0, 0);
 
   /* caller function */
   caller = &(program->functions[0]);
@@ -195,7 +195,7 @@ void test_function_native_function_call() {
   NativeFunction *native_function;
   Byte code[] = {PUSH_STRING, 0, INVOKE_NATIVE_FUNCTION, 1, PUSH_I32_0, HALT};
 
-  program = create_program("Program", 0, 0, 1, 1, 1, 0);
+  program = create_program("Program", 0, 0, 1, 1, 1, 0, 0);
 
   function = program->entry;
   function->constant_pool_size = 2;
@@ -248,7 +248,7 @@ void test_function_tail_call() {
   Function *callee;
   Function *entry;
 
-  program = create_program("Program", 0, 0, 3, 0, 0, 0);
+  program = create_program("Program", 0, 0, 3, 0, 0, 0, 0);
 
   /* caller function */
   caller = &(program->functions[0]);
@@ -333,7 +333,7 @@ void test_function_mutual_tail_recursion() {
   Function *even;
   Function *entry;
 
-  program = create_program("Program", 0, 0, 3, 0, 0, 2);
+  program = create_program("Program", 0, 0, 3, 0, 0, 0, 2);
 
   /* odd function */
   odd = &(program->functions[0]);

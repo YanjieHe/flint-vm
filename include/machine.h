@@ -3,7 +3,9 @@
 
 #include "value.h"
 
-typedef struct Environment { Function *function; } Environment;
+typedef struct Environment {
+  Function *function;
+} Environment;
 
 enum MachineStatus {
   MACHINE_STOPPED,
@@ -11,7 +13,8 @@ enum MachineStatus {
 
   /* runtime errors */
   RUNTIME_ERROR_ARRAY_LENGTH_LESS_THAN_ZERO,
-  RUNTIME_ERROR_NATIVE_FUNCTION_ERROR
+  RUNTIME_ERROR_NATIVE_FUNCTION_ERROR,
+  RUNTIME_ERROR_INTERFACE_METHOD_NOT_FOUND
 };
 
 typedef struct Machine {
@@ -39,7 +42,7 @@ void free_machine(Machine *machine);
 
 void load_program(Machine *machine, Program *program);
 
-void print_stack(Machine* machine, i32 size);
+void print_stack(Machine *machine, i32 size);
 
 i32 run_machine(Machine *machine);
 

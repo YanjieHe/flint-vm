@@ -243,7 +243,7 @@ f64 read_f64(ByteCodeLoader *loader) {
 
 String *read_string(ByteCodeLoader *loader) {
   String *result;
-  Byte length;
+  u16 length;
   int i;
   int peek;
 
@@ -359,6 +359,24 @@ void load_function(Program *program, ByteCodeLoader *loader,
           &(program->native_functions[read_i32(loader)]);
       break;
     }
+    case CONSTANT_KIND_INTERFACE_META_DATA: {
+      function->constant_pool[i].kind = CONSTANT_KIND_INTERFACE_META_DATA;
+      function->constant_pool[i].u.interface_meta_data =
+          &(program->interfaces_meta_data[read_i32(loader)]);
+      break;
+    }
+    case CONSTANT_KIND_INTERFACE_METHOD_REFERENCE: {
+      function->constant_pool[i].kind =
+          CONSTANT_KIND_INTERFACE_METHOD_REFERENCE;
+      function->constant_pool[i].u.interface_method_ref_v =
+          malloc(sizeof(InterfaceMethodReference));
+      function->constant_pool[i].u.interface_method_ref_v->interface_index =
+          read_i32(loader);
+      function->constant_pool[i].u.interface_method_ref_v->method_index =
+          read_u16(loader);
+      function->constant_pool[i].u.interface_method_ref_v->args_size = 0;
+      break;
+    }
     }
     STOP_IF_ANY_LOADING_ERROR(loader,
                               "error occurs when loading constant pool");
@@ -395,6 +413,7 @@ void load_global_variable(Program *program, ByteCodeLoader *loader,
 void load_structure(Program *program, ByteCodeLoader *loader,
                     StructureMetaData *structure_meta) {
   int i;
+  int j;
 
   structure_meta->name = read_string(loader);
   STOP_IF_ANY_LOADING_ERROR(loader, "fail to read the name of the structure");
@@ -412,6 +431,89 @@ void load_structure(Program *program, ByteCodeLoader *loader,
     structure_meta->field_names[i] = read_string(loader);
     STOP_IF_ANY_LOADING_ERROR(loader,
                               "fail to read the name of structure fields");
+  }
+
+  structure_meta->vtable_entry_count = read_u16(loader);
+  STOP_IF_ANY_LOADING_ERROR(loader,
+                            "fail to read the number of vtable entries");
+
+  structure_meta->vtable_entries =
+      malloc(sizeof(VTableEntry) * structure_meta->vtable_entry_count);
+  for (i = 0; i < structure_meta->vtable_entry_count; i++) {
+    structure_meta->vtable_entries[i].interface_index = 0;
+    structure_meta->vtable_entries[i].method_count = 0;
+    structure_meta->vtable_entries[i].methods = NULL;
+  }
+  for (i = 0; i < structure_meta->vtable_entry_count; i++) {
+    structure_meta->vtable_entries[i].interface_index = read_i32(loader);
+    STOP_IF_ANY_LOADING_ERROR(loader,
+                              "fail to read the interface index of vtable");
+
+    structure_meta->vtable_entries[i].method_count = read_u16(loader);
+    STOP_IF_ANY_LOADING_ERROR(loader,
+                              "fail to read the number of vtable methods");
+
+    structure_meta->vtable_entries[i].methods = malloc(
+        sizeof(Function *) * structure_meta->vtable_entries[i].method_count);
+    for (j = 0; j < structure_meta->vtable_entries[i].method_count; j++) {
+      structure_meta->vtable_entries[i].methods[j] =
+          &(program->functions[read_i32(loader)]);
+      STOP_IF_ANY_LOADING_ERROR(loader,
+                                "fail to read the function index of vtable");
+    }
+  }
+}
+
+void load_interface(Program *program, ByteCodeLoader *loader,
+                    InterfaceMetaData *interface_meta) {
+  int i;
+
+  interface_meta->interface_index = read_i32(loader);
+  STOP_IF_ANY_LOADING_ERROR(loader, "fail to read the interface index");
+
+  interface_meta->name = read_string(loader);
+  STOP_IF_ANY_LOADING_ERROR(loader, "fail to read the name of the interface");
+
+  interface_meta->method_count = read_u16(loader);
+  STOP_IF_ANY_LOADING_ERROR(loader,
+                            "fail to read the number of interface methods");
+
+  interface_meta->methods =
+      malloc(sizeof(InterfaceMethodMetaData) * interface_meta->method_count);
+  for (i = 0; i < interface_meta->method_count; i++) {
+    interface_meta->methods[i].name = NULL;
+    interface_meta->methods[i].args_size = 0;
+  }
+  for (i = 0; i < interface_meta->method_count; i++) {
+    interface_meta->methods[i].name = read_string(loader);
+    STOP_IF_ANY_LOADING_ERROR(loader,
+                              "fail to read the name of interface method");
+
+    interface_meta->methods[i].args_size = read_u16(loader);
+    STOP_IF_ANY_LOADING_ERROR(
+        loader, "fail to read the argument size of interface method");
+  }
+}
+
+void resolve_interface_method_references(Program *program) {
+  int i;
+  int j;
+  Function *function;
+  InterfaceMethodReference *interface_method_ref;
+
+  for (i = 0; i < program->function_count; i++) {
+    function = &(program->functions[i]);
+    for (j = 0; j < function->constant_pool_size; j++) {
+      if (function->constant_pool[j].kind ==
+          CONSTANT_KIND_INTERFACE_METHOD_REFERENCE) {
+        interface_method_ref =
+            function->constant_pool[j].u.interface_method_ref_v;
+        interface_method_ref->args_size =
+            program->interfaces_meta_data[interface_method_ref->interface_index]
+                .methods[interface_method_ref->method_index]
+                .args_size;
+      }
+    }
   }
 }
 
@@ -471,6 +573,7 @@ Program *read_byte_code_file(ByteCodeLoader *loader) {
   i32 function_count;
   i32 native_library_count;
   i32 native_function_count;
+  i32 interface_count;
   i32 entry_point;
   int i;
 
@@ -494,13 +597,17 @@ Program *read_byte_code_file(ByteCodeLoader *loader) {
   RETURN_NULL_IF_ANY_LOADING_ERROR(loader,
                                    "fail to read the native function count");
 
+  interface_count = read_i32(loader);
+  RETURN_NULL_IF_ANY_LOADING_ERROR(loader, "fail to read the interface count");
+
   entry_point = read_i32(loader);
   RETURN_NULL_IF_ANY_LOADING_ERROR(loader,
                                    "fail to read the entry function offset");
 
-  program = create_program(
-      loader->file_name, global_variable_count, structure_count, function_count,
-      native_library_count, native_function_count, entry_point);
+  program =
+      create_program(loader->file_name, global_variable_count, structure_count,
+                     function_count, native_library_count,
+                     native_function_count, interface_count, entry_point);
 
   for (i = 0; i < program->global_variable_count; i++) {
     load_global_variable(program, loader, &(program->global_variables[i]));
@@ -528,6 +635,13 @@ Program *read_byte_code_file(ByteCodeLoader *loader) {
     RETURN_NULL_IF_ANY_LOADING_ERROR(loader,
                                      "fail to load the native function");
   }
+
+  for (i = 0; i < program->interface_count; i++) {
+    load_interface(program, loader, &(program->interfaces_meta_data[i]));
+    RETURN_NULL_IF_ANY_LOADING_ERROR(loader, "fail to load the interfaces");
+  }
+
+  resolve_interface_method_references(program);
 
   return program;
 }

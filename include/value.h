@@ -26,6 +26,8 @@ struct Closure;
 struct StructureMetaData;
 struct GlobalVariable;
 struct NativeFunction;
+struct InterfaceMetaData;
+struct InterfaceMethodReference;
 
 typedef union {
   i32 i32_v;
@@ -84,7 +86,9 @@ typedef enum ConstantKind {
   CONSTANT_KIND_FUNCTION = 5,
   CONSTANT_KIND_STRUCTURE_META_DATA = 6,
   CONSTANT_KIND_GLOBAL_VARIABLE = 7,
-  CONSTANT_KIND_NATIVE_FUNCTION = 8
+  CONSTANT_KIND_NATIVE_FUNCTION = 8,
+  CONSTANT_KIND_INTERFACE_META_DATA = 9,
+  CONSTANT_KIND_INTERFACE_METHOD_REFERENCE = 10
 } ConstantKind;
 
 typedef struct Constant {
@@ -99,13 +103,42 @@ typedef struct Constant {
     struct GCObject *obj_v;
     struct GlobalVariable *global_variable_v;
     struct NativeFunction *native_func_v;
+    struct InterfaceMetaData *interface_meta_data;
+    struct InterfaceMethodReference *interface_method_ref_v;
   } u;
 } Constant;
+
+typedef struct InterfaceMethodReference {
+  i32 interface_index;
+  u16 method_index;
+  u16 args_size;
+} InterfaceMethodReference;
+
+typedef struct InterfaceMethodMetaData {
+  String *name;
+  u16 args_size;
+} InterfaceMethodMetaData;
+
+typedef struct InterfaceMetaData {
+  i32 interface_index;
+  String *name;
+  u16 method_count;
+  InterfaceMethodMetaData *methods;
+} InterfaceMetaData;
+
+typedef struct VTableEntry {
+  i32 interface_index;
+  u16 method_count;
+  struct Function **methods;
+} VTableEntry;
 
 typedef struct StructureMetaData {
   String *name;
   String **field_names;
   u16 n_values;
+
+  u16 vtable_entry_count;
+  VTableEntry *vtable_entries;
 } StructureMetaData;
 
 typedef struct Structure {
@@ -200,6 +233,10 @@ typedef struct Program {
   i32 native_function_count;
   NativeFunction *native_functions;
 
+  /* interfaces */
+  i32 interface_count;
+  InterfaceMetaData *interfaces_meta_data;
+
   /* entry */
   Function *entry;
 } Program;
@@ -207,7 +244,7 @@ typedef struct Program {
 Program *create_program(char *file_name, i32 global_variable_count,
                         i32 structure_count, i32 function_count,
                         i32 native_library_count, i32 native_function_count,
-                        i32 entry_point);
+                        i32 interface_count, i32 entry_point);
 void free_program(Program *program);
 String *make_string(const char *s);
 void free_string(String *str);

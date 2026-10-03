@@ -40,6 +40,9 @@ void load_global_variable(Program *program, ByteCodeLoader *loader,
                           GlobalVariable *global_variable);
 void load_structure(Program *program, ByteCodeLoader *loader,
                     StructureMetaData *structure_meta);
+void load_interface(Program *program, ByteCodeLoader *loader,
+                    InterfaceMetaData *interface_meta);
+void resolve_interface_method_references(Program *program);
 void load_native_library(Program *program, ByteCodeLoader *loader,
                          NativeLibrary *native_library);
 void load_native_function(Program *program, ByteCodeLoader *loader,

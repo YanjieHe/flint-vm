@@ -1,12 +1,12 @@
 #include "value.h"
+#include "load_library.h"
 #include <stdlib.h>
 #include <string.h>
-#include "load_library.h"
 
 Program *create_program(char *file_name, i32 global_variable_count,
                         i32 structure_count, i32 function_count,
                         i32 native_library_count, i32 native_function_count,
-                        i32 entry_point) {
+                        i32 interface_count, i32 entry_point) {
   Program *program;
   int file_name_len;
   int i;
@@ -42,6 +42,8 @@ Program *create_program(char *file_name, i32 global_variable_count,
     program->structures_meta_data[i].name = NULL;
     program->structures_meta_data[i].n_values = 0;
     program->structures_meta_data[i].field_names = NULL;
+    program->structures_meta_data[i].vtable_entry_count = 0;
+    program->structures_meta_data[i].vtable_entries = NULL;
   }
 
   /* functions */
@@ -78,6 +80,20 @@ Program *create_program(char *file_name, i32 global_variable_count,
     program->native_functions[i].library = NULL;
   }
 
+  /* interfaces */
+  program->interface_count = interface_count;
+  program->interfaces_meta_data =
+      interface_count == 0
+          ? NULL
+          : malloc(sizeof(InterfaceMetaData) * interface_count);
+
+  for (i = 0; i < program->interface_count; i++) {
+    program->interfaces_meta_data[i].interface_index = 0;
+    program->interfaces_meta_data[i].name = NULL;
+    program->interfaces_meta_data[i].method_count = 0;
+    program->interfaces_meta_data[i].methods = NULL;
+  }
+
   /* entry */
   program->entry = &(program->functions[entry_point]);
 
@@ -104,12 +120,23 @@ void free_program(Program *program) {
       free_string(program->structures_meta_data[i].field_names[j]);
     }
     free(program->structures_meta_data[i].field_names);
+    for (j = 0;
+         j < program->structures_meta_data[i].vtable_entry_count; j++) {
+      free(program->structures_meta_data[i].vtable_entries[j].methods);
+    }
+    free(program->structures_meta_data[i].vtable_entries);
   }
   free(program->structures_meta_data);
 
   /* functions */
   for (i = 0; i < program->function_count; i++) {
     function = &(program->functions[i]);
+    for (j = 0; j < function->constant_pool_size; j++) {
+      if (function->constant_pool[j].kind ==
+          CONSTANT_KIND_INTERFACE_METHOD_REFERENCE) {
+        free(function->constant_pool[j].u.interface_method_ref_v);
+      }
+    }
     free(function->constant_pool);
     /* TO DO: free constant pool */
     free_string(function->name);
@@ -129,6 +156,16 @@ void free_program(Program *program) {
     free_string(program->native_functions[i].func_name);
   }
   free(program->native_functions);
+
+  /* interfaces */
+  for (i = 0; i < program->interface_count; i++) {
+    free_string(program->interfaces_meta_data[i].name);
+    for (j = 0; j < program->interfaces_meta_data[i].method_count; j++) {
+      free_string(program->interfaces_meta_data[i].methods[j].name);
+    }
+    free(program->interfaces_meta_data[i].methods);
+  }
+  free(program->interfaces_meta_data);
 
   /* free program itself */
   free(program);

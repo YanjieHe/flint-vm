@@ -186,10 +186,13 @@ i32 run_machine(Machine *machine) {
   Structure *structure;
   GlobalVariable *global_variable;
   NativeFunction *native_function;
+  InterfaceMethodReference *interface_method_ref;
+  GCObject *receiver;
   Closure *closure;
   i32 next_call_args_size;
   i32 base;
   i32 exit_code;
+  i32 i;
 
   stack = machine->stack;
   is_gc_object = machine->is_gc_object;
@@ -221,7 +224,8 @@ i32 run_machine(Machine *machine) {
     printf("\n");
     printf("op = %s\n", opcode_info[op][0]);
     */
-    /* log_message((LOG_LEVEL_DEBUG, "pc = %d, op = %s", pc - machine->env.function->code, opcode_info[op][0])); */
+    /* log_message((LOG_LEVEL_DEBUG, "pc = %d, op = %s", pc -
+     * machine->env.function->code, opcode_info[op][0])); */
     switch (op) {
     case HALT: {
       machine->machine_status = MACHINE_STOPPED;
@@ -795,7 +799,10 @@ i32 run_machine(Machine *machine) {
       machine->sp = sp;
       machine->pc = pc;
       {
-        union { void *p; int (*f)(Machine *); } func_conv;
+        union {
+          void *p;
+          int (*f)(Machine *);
+        } func_conv;
         func_conv.p = native_function->function_pointer;
         if (func_conv.f(machine) == -1) {
           machine->machine_status = RUNTIME_ERROR_NATIVE_FUNCTION_ERROR;
@@ -1123,6 +1130,26 @@ i32 run_machine(Machine *machine) {
         callee = closure->function;
         INVOKE_FUNCTION();
       }
+      break;
+    }
+    case INVOKE_INTERFACE: {
+      READ_1BYTE_U8(offset);
+      interface_method_ref = constant_pool[offset].u.interface_method_ref_v;
+      receiver = stack[sp - interface_method_ref->args_size + 1].obj_v;
+      for (i = 0; i < receiver->u.struct_v->meta_data->vtable_entry_count;
+           i++) {
+        if (receiver->u.struct_v->meta_data->vtable_entries[i]
+                .interface_index == interface_method_ref->interface_index) {
+          callee = receiver->u.struct_v->meta_data->vtable_entries[i]
+                       .methods[interface_method_ref->method_index];
+          INVOKE_FUNCTION();
+          goto FOUND_INTERFACE;
+        }
+      }
+      SAVE_MACHINE_STATE(machine, sp, fp, pc);
+      machine->machine_status = RUNTIME_ERROR_INTERFACE_METHOD_NOT_FOUND;
+      return;
+    FOUND_INTERFACE:
       break;
     }
     case INSTANCE_OF: {

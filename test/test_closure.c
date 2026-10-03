@@ -42,7 +42,7 @@ void test_closure_invocation() {
 
   StructureMetaData *captured_values;
 
-  program = create_program("Program", 0, 1, 3, 0, 0, 0);
+  program = create_program("Program", 0, 1, 3, 0, 0, 0, 0);
 
   /* function create_closure() */
   create_closure = &(program->functions[0]);
@@ -127,7 +127,7 @@ void test_function_reference_passing() {
 
   StructureMetaData *captured_values;
 
-  program = create_program("Program", 0, 0, 3, 0, 0, 0);
+  program = create_program("Program", 0, 0, 3, 0, 0, 0, 0);
 
   function = &(program->functions[0]);
   copy_byte_code(function, function_code, sizeof(function_code) / sizeof(Byte));
