@@ -9,6 +9,7 @@
 #include "test_global_variable.h"
 #include "test_interface.h"
 #include "test_jump.h"
+#include "test_native_api.h"
 #include "test_structure.h"
 
 int total_tests;
@@ -62,6 +63,14 @@ int main(int argc, char **argv) {
   RUN_TEST(test_function_native_function_call);
   RUN_TEST(test_function_tail_call);
   RUN_TEST(test_function_mutual_tail_recursion);
+
+  RUN_TEST(test_native_primitive_argument_macros);
+  RUN_TEST(test_native_object_argument_macros);
+  RUN_TEST(test_native_primitive_return_macros);
+  RUN_TEST(test_native_object_return_macro);
+  RUN_TEST(test_native_void_and_zero_argument_returns);
+  RUN_TEST(test_native_api_through_invoke_instruction);
+  RUN_TEST(test_native_function_error_sets_machine_status);
 
   RUN_TEST(test_jump);
   RUN_TEST(test_loop);

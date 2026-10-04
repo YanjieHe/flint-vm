@@ -208,9 +208,9 @@ void test_function_native_function_call() {
   native_function = &(program->native_functions[0]);
   native_function->args_size = 1;
   program->native_libraries[0].library_pointer = open_dynamic_library(
-      "../extensions/input-output/build/libflint-vm-input-output.so");
+      "../extensions/io/build/libflint_io.so");
   native_function->function_pointer =
-      load_function_from_dynamic_library(program->native_libraries[0].library_pointer, "FLINT_VM_println");
+      load_function_from_dynamic_library(program->native_libraries[0].library_pointer, "flint_io_print_line");
   function->constant_pool[1].u.native_func_v = native_function;
   ASSERT_NOT_EQUAL(native_function->function_pointer, NULL);
   machine = create_machine(100);

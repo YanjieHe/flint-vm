@@ -804,11 +804,11 @@ i32 run_machine(Machine *machine) {
           int (*f)(Machine *);
         } func_conv;
         func_conv.p = native_function->function_pointer;
-        if (func_conv.f(machine) == -1) {
+        if (func_conv.f(machine) == NATIVE_FUNCTION_SUCCESS) {
+          sp = machine->sp;
+        } else {
           machine->machine_status = RUNTIME_ERROR_NATIVE_FUNCTION_ERROR;
           return;
-        } else {
-          sp = machine->sp;
         }
       }
       break;
@@ -1160,4 +1160,4 @@ i32 run_machine(Machine *machine) {
     }
     }
   }
-}
+}

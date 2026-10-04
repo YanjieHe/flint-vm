@@ -2,6 +2,7 @@
 #define FLINT_VM_MACHINE_H
 
 #include "value.h"
+#include <string.h>
 
 typedef struct Environment {
   Function *function;
@@ -46,17 +47,98 @@ void print_stack(Machine *machine, i32 size);
 
 i32 run_machine(Machine *machine);
 
-#define GET_I32_ARG(MACHINE, OFFSET)                                           \
-  ((MACHINE)->stack[(MACHINE)->fp + (OFFSET)].i32_v)
-#define GET_I64_ARG(MACHINE, OFFSET)                                           \
-  ((MACHINE)->stack[(MACHINE)->fp + (OFFSET)].i64_v)
-#define GET_F32_ARG(MACHINE, OFFSET)                                           \
-  ((MACHINE)->stack[(MACHINE)->fp + (OFFSET)].f32_v)
-#define GET_F64_ARG(MACHINE, OFFSET)                                           \
-  ((MACHINE)->stack[(MACHINE)->fp + (OFFSET)].f64_v)
-#define GET_STRUCT_ARG(MACHINE, OFFSET)                                        \
-  ((MACHINE)->stack[(MACHINE)->fp + (OFFSET)].obj_v->u.struct_v)
-#define GET_STRING_ARG(MACHINE, OFFSET)                                        \
-  ((MACHINE)->stack[(MACHINE)->fp + (OFFSET)].obj_v->u.str_v)
+enum NativeFunctionStatusCode {
+  NATIVE_FUNCTION_SUCCESS = 0,
+  NATIVE_FUNCTION_ERROR = 1
+};
+
+#define FLINT_GET_I32_ARG(MACHINE, INDEX)                                      \
+  ((MACHINE)->stack[(MACHINE)->fp + (INDEX)].i32_v)
+#define FLINT_GET_I64_ARG(MACHINE, INDEX)                                      \
+  ((MACHINE)->stack[(MACHINE)->fp + (INDEX)].i64_v)
+#define FLINT_GET_F32_ARG(MACHINE, INDEX)                                      \
+  ((MACHINE)->stack[(MACHINE)->fp + (INDEX)].f32_v)
+#define FLINT_GET_F64_ARG(MACHINE, INDEX)                                      \
+  ((MACHINE)->stack[(MACHINE)->fp + (INDEX)].f64_v)
+#define FLINT_GET_BOOL_ARG(MACHINE, INDEX)                                     \
+  ((BOOLEAN)((MACHINE)->stack[(MACHINE)->fp + (INDEX)].i32_v))
+#define FLINT_GET_CHAR_ARG(MACHINE, INDEX)                                     \
+  ((uint32_t)((MACHINE)->stack[(MACHINE)->fp + (INDEX)].i32_v))
+
+#define FLINT_GET_OBJECT_ARG(MACHINE, INDEX)                                   \
+  ((MACHINE)->stack[(MACHINE)->fp + (INDEX)].obj_v)
+#define FLINT_GET_STRUCT_ARG(MACHINE, INDEX)                                   \
+  (FLINT_GET_OBJECT_ARG((MACHINE), (INDEX))->u.struct_v)
+#define FLINT_GET_STRING_ARG(MACHINE, INDEX)                                   \
+  (FLINT_GET_OBJECT_ARG((MACHINE), (INDEX))->u.str_v)
+#define FLINT_GET_ARRAY_ARG(MACHINE, INDEX)                                    \
+  (FLINT_GET_OBJECT_ARG((MACHINE), (INDEX))->u.arr_v)
+
+#define FLINT_CLEAR_NATIVE_ARGUMENTS(MACHINE)                                  \
+  do {                                                                         \
+    if ((MACHINE)->sp >= (MACHINE)->fp) {                                      \
+      memset((MACHINE)->is_gc_object + (MACHINE)->fp, 0,                       \
+             (size_t)((MACHINE)->sp - (MACHINE)->fp + 1));                     \
+    }                                                                          \
+  } while (0)
+
+#define FLINT_RETURN_VOID(MACHINE)                                             \
+  do {                                                                         \
+    FLINT_CLEAR_NATIVE_ARGUMENTS(MACHINE);                                     \
+    (MACHINE)->is_gc_object[(MACHINE)->fp] = FALSE;                            \
+    (MACHINE)->sp = (MACHINE)->fp;                                             \
+    return NATIVE_FUNCTION_SUCCESS;                                            \
+  } while (0)
+
+#define FLINT_RETURN_I32(MACHINE, VALUE)                                       \
+  do {                                                                         \
+    FLINT_CLEAR_NATIVE_ARGUMENTS(MACHINE);                                     \
+    (MACHINE)->stack[(MACHINE)->fp].i32_v = (VALUE);                           \
+    (MACHINE)->is_gc_object[(MACHINE)->fp] = FALSE;                            \
+    (MACHINE)->sp = (MACHINE)->fp;                                             \
+    return NATIVE_FUNCTION_SUCCESS;                                            \
+  } while (0)
+
+#define FLINT_RETURN_I64(MACHINE, VALUE)                                       \
+  do {                                                                         \
+    FLINT_CLEAR_NATIVE_ARGUMENTS(MACHINE);                                     \
+    (MACHINE)->stack[(MACHINE)->fp].i64_v = (VALUE);                           \
+    (MACHINE)->is_gc_object[(MACHINE)->fp] = FALSE;                            \
+    (MACHINE)->sp = (MACHINE)->fp;                                             \
+    return NATIVE_FUNCTION_SUCCESS;                                            \
+  } while (0)
+
+#define FLINT_RETURN_F32(MACHINE, VALUE)                                       \
+  do {                                                                         \
+    FLINT_CLEAR_NATIVE_ARGUMENTS(MACHINE);                                     \
+    (MACHINE)->stack[(MACHINE)->fp].f32_v = (VALUE);                           \
+    (MACHINE)->is_gc_object[(MACHINE)->fp] = FALSE;                            \
+    (MACHINE)->sp = (MACHINE)->fp;                                             \
+    return NATIVE_FUNCTION_SUCCESS;                                            \
+  } while (0)
+
+#define FLINT_RETURN_F64(MACHINE, VALUE)                                       \
+  do {                                                                         \
+    FLINT_CLEAR_NATIVE_ARGUMENTS(MACHINE);                                     \
+    (MACHINE)->stack[(MACHINE)->fp].f64_v = (VALUE);                           \
+    (MACHINE)->is_gc_object[(MACHINE)->fp] = FALSE;                            \
+    (MACHINE)->sp = (MACHINE)->fp;                                             \
+    return NATIVE_FUNCTION_SUCCESS;                                            \
+  } while (0)
+
+#define FLINT_RETURN_OBJECT(MACHINE, VALUE)                                    \
+  do {                                                                         \
+    FLINT_CLEAR_NATIVE_ARGUMENTS(MACHINE);                                     \
+    (MACHINE)->stack[(MACHINE)->fp].obj_v = (VALUE);                           \
+    (MACHINE)->is_gc_object[(MACHINE)->fp] = TRUE;                             \
+    (MACHINE)->sp = (MACHINE)->fp;                                             \
+    return NATIVE_FUNCTION_SUCCESS;                                            \
+  } while (0)
+
+#define FLINT_RETURN_BOOL(MACHINE, VALUE)                                      \
+  FLINT_RETURN_I32((MACHINE), (VALUE) ? TRUE : FALSE)
+
+#define FLINT_RETURN_CHAR(MACHINE, VALUE)                                      \
+  FLINT_RETURN_I32((MACHINE), (i32)(VALUE))
 
 #endif
