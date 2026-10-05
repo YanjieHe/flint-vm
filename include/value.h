@@ -1,6 +1,8 @@
 #ifndef FLINT_VM_VALUE_H
 #define FLINT_VM_VALUE_H
 
+#include "unicode.h"
+#include <stddef.h>
 #include <stdint.h>
 
 typedef int8_t i8;
@@ -63,7 +65,7 @@ typedef struct GCObject {
 
 typedef struct String {
   i32 length;
-  char *characters;
+  u32 *characters;
 } String;
 
 typedef struct Array {
@@ -158,7 +160,7 @@ typedef struct Method {
 } Method;
 
 typedef struct NativeLibrary {
-  String *library_path;
+  String *library_name;
   void *library_pointer;
 } NativeLibrary;
 
@@ -246,9 +248,12 @@ Program *create_program(char *file_name, i32 global_variable_count,
                         i32 native_library_count, i32 native_function_count,
                         i32 interface_count, i32 entry_point);
 void free_program(Program *program);
-String *make_string(const char *s);
+String *make_string(const char *utf8);
 void free_string(String *str);
+UnicodeStatus make_string_from_utf8(const char *utf8, size_t byte_length,
+                                    String **result);
 char *str_to_c_str(String *str);
+int compare_strings(String* a, String* b);
 void free_gc_object(GCObject *gc_object);
 void init_function(Function *function);
 GCObject *wrap_string_into_gc_object(String *str);

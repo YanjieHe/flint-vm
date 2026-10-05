@@ -62,7 +62,7 @@ Program *create_program(char *file_name, i32 global_variable_count,
           : malloc(sizeof(NativeLibrary) * native_library_count);
 
   for (i = 0; i < program->native_library_count; i++) {
-    program->native_libraries[i].library_path = NULL;
+    program->native_libraries[i].library_name = NULL;
     program->native_libraries[i].library_pointer = NULL;
   }
 
@@ -120,8 +120,7 @@ void free_program(Program *program) {
       free_string(program->structures_meta_data[i].field_names[j]);
     }
     free(program->structures_meta_data[i].field_names);
-    for (j = 0;
-         j < program->structures_meta_data[i].vtable_entry_count; j++) {
+    for (j = 0; j < program->structures_meta_data[i].vtable_entry_count; j++) {
       free(program->structures_meta_data[i].vtable_entries[j].methods);
     }
     free(program->structures_meta_data[i].vtable_entries);
@@ -146,7 +145,7 @@ void free_program(Program *program) {
 
   /* native libraries */
   for (i = 0; i < program->native_library_count; i++) {
-    free_string(program->native_libraries[i].library_path);
+    free_string(program->native_libraries[i].library_name);
     close_dynamic_library(program->native_libraries[i].library_pointer);
   }
   free(program->native_libraries);
@@ -171,15 +170,17 @@ void free_program(Program *program) {
   free(program);
 }
 
-String *make_string(const char *s) {
+String *make_string(const char *utf8) {
   String *str;
 
-  str = malloc(sizeof(String));
-  str->length = strlen(s);
-  str->characters = malloc(sizeof(char) * str->length);
-  strncpy(str->characters, s, str->length);
-
-  return str;
+  if (utf8 == NULL) {
+    return NULL;
+  } else if (make_string_from_utf8(utf8, strlen(utf8), &str) !=
+             UNICODE_SUCCESS) {
+    return NULL;
+  } else {
+    return str;
+  }
 }
 
 void free_string(String *str) {
@@ -189,12 +190,90 @@ void free_string(String *str) {
   }
 }
 
-char *str_to_c_str(String *str) {
-  char *c_str = malloc(sizeof(char) * (str->length + 1));
-  strncpy(c_str, str->characters, str->length);
-  c_str[str->length] = '\0';
+UnicodeStatus make_string_from_utf8(const char *utf8, size_t byte_length,
+                                    String **result) {
+  UnicodeStatus status;
+  uint32_t *characters;
+  size_t character_count;
+  String *str;
 
-  return c_str;
+  if (result == NULL) {
+    return UNICODE_INVALID_ARGUMENT;
+  } else {
+    *result = NULL;
+
+    status = utf8_to_utf32(utf8, byte_length, &characters, &character_count);
+
+    if (status != UNICODE_SUCCESS) {
+      return status;
+    } else if (character_count > (size_t)INT32_MAX) {
+      free(characters);
+      return UNICODE_LENGTH_OVERFLOW;
+    } else {
+      str = malloc(sizeof(String));
+      if (str == NULL) {
+        free(characters);
+        return UNICODE_OUT_OF_MEMORY;
+      } else {
+        str->length = (i32)character_count;
+        str->characters = characters;
+
+        *result = str;
+
+        return UNICODE_SUCCESS;
+      }
+    }
+  }
+}
+
+char *str_to_c_str(String *str) {
+  UnicodeStatus status;
+  char *utf8;
+  size_t utf8_length;
+
+  if (str == NULL) {
+    return NULL;
+  } else {
+    status = utf32_to_utf8(str->characters, (size_t)str->length, &utf8,
+                           &utf8_length);
+
+    if (status != UNICODE_SUCCESS) {
+      return NULL;
+    } else {
+      return utf8;
+    }
+  }
+}
+
+int compare_strings(String *a, String *b) {
+  i32 N;
+  i32 i;
+
+  if (a == b) {
+    return (0);
+  } else {
+    if (a->length < b->length) {
+      N = a->length;
+    } else {
+      N = b->length;
+    }
+
+    for (i = 0; i < N; i++) {
+      if (a->characters[i] < b->characters[i]) {
+        return (-1);
+      } else if (a->characters[i] > b->characters[i]) {
+        return (+1);
+      }
+    }
+
+    if (a->length < b->length) {
+      return (-1);
+    } else if (a->length > b->length) {
+      return (+1);
+    } else {
+      return (0);
+    }
+  }
 }
 
 void free_gc_object(GCObject *gc_object) {

@@ -39,6 +39,7 @@ ByteCodeLoader *create_byte_code_loader(char *file_name) {
 
     loader->file = file;
     loader->error_messages = NULL;
+    loader->native_library_resolver = NULL;
 
     return loader;
   } else {
@@ -242,34 +243,62 @@ f64 read_f64(ByteCodeLoader *loader) {
 }
 
 String *read_string(ByteCodeLoader *loader) {
+  UnicodeStatus status;
   String *result;
-  u16 length;
-  int i;
-  int peek;
+  char *utf8;
+  u16 byte_length;
+  size_t bytes_read;
 
-  length = read_u16(loader);
+  byte_length = read_u16(loader);
   if (loader->error_messages) {
     add_loading_error(loader, "fail to read the length of the string");
 
     return NULL;
+  } else if (byte_length == 0) {
+    status = make_string_from_utf8(NULL, 0, &result);
+
+    if (status != UNICODE_SUCCESS) {
+      add_loading_error(loader, "fail to create an empty string");
+      return NULL;
+    } else {
+      return result;
+    }
   } else {
-    result = malloc(sizeof(String));
-    result->characters = malloc(sizeof(char) * length);
-    result->length = (i32)length;
+    utf8 = malloc(sizeof(char) * byte_length);
 
-    for (i = 0; i < result->length; i++) {
-      peek = fgetc(loader->file);
-      if (peek != EOF) {
-        result->characters[i] = (char)peek;
-      } else {
+    if (utf8 == NULL) {
+      add_loading_error(loader, "out of memory while reading a string");
+      return NULL;
+    } else {
+      bytes_read = fread(utf8, sizeof(char), byte_length, loader->file);
+
+      if (bytes_read != byte_length) {
+        free(utf8);
         add_loading_error(loader, "fail to read the string");
-        free_string(result);
-
         return NULL;
+      } else {
+        status = make_string_from_utf8(utf8, (size_t)byte_length, &result);
+        free(utf8);
+
+        if (status != UNICODE_SUCCESS) {
+          if (status == UNICODE_INVALID_UTF8) {
+            add_loading_error(loader, "the string contains invalid UTF-8");
+          } else if (status == UNICODE_TRUNCATED_UTF8) {
+            add_loading_error(loader, "the string contains truncated UTF-8");
+          } else if (status == UNICODE_OUT_OF_MEMORY) {
+            add_loading_error(loader,
+                              "out of memory while converting a string");
+          } else if (status == UNICODE_LENGTH_OVERFLOW) {
+            add_loading_error(loader, "the string is too long");
+          } else {
+            add_loading_error(loader, "fail to convert the string from UTF-8");
+          }
+          return NULL;
+        } else {
+          return result;
+        }
       }
     }
-
-    return result;
   }
 }
 
@@ -519,19 +548,29 @@ void resolve_interface_method_references(Program *program) {
 
 void load_native_library(Program *program, ByteCodeLoader *loader,
                          NativeLibrary *native_library) {
+  char *library_name;
   char *lib_path;
 
-  native_library->library_path = read_string(loader);
+  native_library->library_name = read_string(loader);
   STOP_IF_ANY_LOADING_ERROR(loader,
                             "fail to read the name of the native library");
 
-  lib_path = str_to_c_str(native_library->library_path);
-  native_library->library_pointer = open_dynamic_library(lib_path);
-  if (native_library->library_pointer) {
-    free(lib_path);
+  library_name = str_to_c_str(native_library->library_name);
+  lib_path = resolve_native_library_path(loader->native_library_resolver,
+                                         library_name);
+  if (lib_path == NULL) {
+    add_loading_error(loader, "the native library cannot be resolved.");
+    free(library_name);
   } else {
-    add_loading_error(loader, "the dynamic library cannot be loaded.");
-    free(lib_path);
+    native_library->library_pointer = open_dynamic_library(lib_path);
+    if (native_library->library_pointer) {
+      free(library_name);
+      free(lib_path);
+    } else {
+      add_loading_error(loader, "the dynamic library cannot be loaded.");
+      free(library_name);
+      free(lib_path);
+    }
   }
 }
 
@@ -705,8 +744,144 @@ void free_error_list(ErrorList *error_list) {
   current_error = error_list;
   while (current_error != NULL) {
     free(current_error->message);
-    next_error = current_error;
+    next_error = current_error->next;
     free(current_error);
     current_error = next_error;
   }
+}
+
+char *make_platform_library_file_name(const char *library_name) {
+  const char *prefix;
+  const char *suffix;
+  size_t prefix_length;
+  size_t name_length;
+  size_t suffix_length;
+  char *result;
+
+#ifdef _WIN32
+  prefix = "";
+  suffix = ".dll";
+#elif defined(__APPLE__)
+  prefix = "lib";
+  suffix = ".dylib";
+#else
+  prefix = "lib";
+  suffix = ".so";
+#endif
+
+  if (library_name == NULL) {
+    return NULL;
+  }
+
+  prefix_length = strlen(prefix);
+  name_length = strlen(library_name);
+  suffix_length = strlen(suffix);
+
+  result = malloc(prefix_length + name_length + suffix_length + 1);
+
+  if (result == NULL) {
+    return NULL;
+  }
+
+  memcpy(result, prefix, prefix_length);
+  memcpy(result + prefix_length, library_name, name_length);
+  memcpy(result + prefix_length + name_length, suffix, suffix_length + 1);
+
+  return result;
+}
+
+char *join_path(const char *directory, const char *file_name) {
+  size_t directory_length;
+  size_t file_name_length;
+  int needs_separator;
+  char separator;
+  char *result;
+
+#ifdef _WIN32
+  separator = '\\';
+#else
+  separator = '/';
+#endif
+
+  if (directory == NULL || file_name == NULL) {
+    return NULL;
+  }
+
+  directory_length = strlen(directory);
+  file_name_length = strlen(file_name);
+  needs_separator = 0;
+
+  if (directory_length > 0) {
+#ifdef _WIN32
+    if (directory[directory_length - 1] != '\\' &&
+        directory[directory_length - 1] != '/') {
+      needs_separator = 1;
+    }
+#else
+    if (directory[directory_length - 1] != '/') {
+      needs_separator = 1;
+    }
+#endif
+  }
+
+  result = malloc(directory_length + needs_separator + file_name_length + 1);
+
+  if (result == NULL) {
+    return NULL;
+  }
+
+  memcpy(result, directory, directory_length);
+
+  if (needs_separator) {
+    result[directory_length] = separator;
+  }
+
+  memcpy(result + directory_length + needs_separator, file_name,
+         file_name_length + 1);
+
+  return result;
+}
+
+int file_exists(const char *path) {
+  FILE *file;
+
+  if (path == NULL) {
+    return 0;
+  }
+
+  file = fopen(path, "rb");
+
+  if (file == NULL) {
+    return 0;
+  }
+
+  fclose(file);
+  return 1;
+}
+
+char *resolve_native_library_path(const NativeLibraryResolver *resolver,
+                                  const char *library_name) {
+  char *file_name;
+  char *candidate;
+
+  file_name = make_platform_library_file_name(library_name);
+
+  while (resolver) {
+    if (resolver->search_path) {
+      candidate = join_path(resolver->search_path, file_name);
+
+      if (file_exists(candidate)) {
+        free(file_name);
+
+        return candidate;
+      } else {
+        free(candidate);
+      }
+    }
+    resolver = resolver->next;
+  }
+
+  free(file_name);
+
+  return NULL;
 }

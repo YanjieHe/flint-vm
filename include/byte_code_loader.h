@@ -15,11 +15,17 @@ typedef struct ErrorList {
   struct ErrorList *next;
 } ErrorList;
 
+typedef struct NativeLibraryResolver {
+  char *search_path;
+  struct NativeLibraryResolver *next;
+} NativeLibraryResolver;
+
 /* @brief It loads the byte code from a disk file. */
 typedef struct ByteCodeLoader {
   char *file_name;
   FILE *file;
   ErrorList *error_messages;
+  NativeLibraryResolver *native_library_resolver;
 } ByteCodeLoader;
 
 ByteCodeLoader *create_byte_code_loader(char *file_name);
@@ -55,5 +61,11 @@ void add_loading_error(ByteCodeLoader *loader, const char *message);
 void append_error_to_error_list(ErrorList **error_list, const char *message);
 void show_errors(ErrorList *error_list);
 void free_error_list(ErrorList *error_list);
+
+char *make_platform_library_file_name(const char *library_name);
+char *join_path(const char *directory, const char *file_name);
+int file_exists(const char *path);
+char *resolve_native_library_path(const NativeLibraryResolver *resolver,
+                                  const char *library_name);
 
 #endif /* FLINT_VM_BYTE_CODE_LOADER_H */

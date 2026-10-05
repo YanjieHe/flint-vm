@@ -4,10 +4,14 @@
 #include "machine.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #define STACK_MAX_SIZE 10000
 
 void print_help_message();
+int append_native_library_resolver(NativeLibraryResolver **resolver,
+                                   char *library_path);
+void free_native_library_resolver(NativeLibraryResolver *resolver);
 
 void print_help_message() {
   printf("Usage: flint-vm [options] <executable path>\n");
@@ -24,11 +28,16 @@ void print_help_message() {
          "printed to the console.\n");
   printf("  --log-level         Set the log level (DEBUG, INFO, WARN, ERROR) "
          "(only available if FLINT_VM_DEBUG_MODE is ON).\n");
+  printf("  --library-path      Add a directory to the native library search "
+         "path.\n");
+  printf(
+      "                      This option may be specified more than once.\n");
   printf("  --disassemble       Output the disassembly of the bytecode instead "
          "of running the program.\n");
   printf("\n");
   printf("Examples:\n");
   printf("  flint-vm my_program.bin --log-file logs.txt --log-level DEBUG\n");
+  printf("  flint-vm my_program.bin --library-path native-libs\n");
   printf("  flint-vm --disassemble my_program.bin\n");
   printf("\n");
   printf("Note: Logging is only enabled if FLINT_VM_DEBUG_MODE is ON.\n");
@@ -36,9 +45,49 @@ void print_help_message() {
          "console.\n");
 }
 
+int append_native_library_resolver(NativeLibraryResolver **resolver,
+                                   char *library_path) {
+  NativeLibraryResolver *node;
+  NativeLibraryResolver *current;
+
+  node = malloc(sizeof(NativeLibraryResolver));
+
+  if (node == NULL) {
+    return 1;
+  } else {
+    node->search_path = library_path;
+    node->next = NULL;
+
+    if ((*resolver) == NULL) {
+      (*resolver) = node;
+
+      return 0;
+    } else {
+      current = (*resolver);
+      while (current->next) {
+        current = current->next;
+      }
+      current->next = node;
+
+      return 0;
+    }
+  }
+}
+
+void free_native_library_resolver(NativeLibraryResolver *resolver) {
+  NativeLibraryResolver *next;
+
+  while (resolver) {
+    next = resolver->next;
+    free(resolver);
+    resolver = next;
+  }
+}
+
 int main(int argc, char **argv) {
   ByteCodeLoader *loader;
   ByteCodePrinter *printer;
+  NativeLibraryResolver *native_library_resolver;
   char *file_name;
   Program *program;
   Machine *machine;
@@ -54,12 +103,14 @@ int main(int argc, char **argv) {
   disassemble = 0;
   log_file = NULL;
   log_level = LOG_LEVEL_DEBUG;
+  native_library_resolver = NULL;
 
   for (i = 1; i < argc; i++) {
     if (strcmp(argv[i], "--disassemble") == 0) {
       disassemble = 1;
     } else if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
       print_help_message();
+      free_native_library_resolver(native_library_resolver);
 
       return 0;
     } else if (strcmp(argv[i], "--log-file") == 0) {
@@ -69,6 +120,7 @@ int main(int argc, char **argv) {
       } else {
         fprintf(stderr, "Error: Missing file path for '--log-file'. Please "
                         "specify the path to the log file.\n");
+        free_native_library_resolver(native_library_resolver);
 
         return 1;
       }
@@ -81,12 +133,13 @@ int main(int argc, char **argv) {
         } else if (strcmp(argv[i + 1], "WARN") == 0) {
           log_level = LOG_LEVEL_WARN;
         } else if (strcmp(argv[i + 1], "ERROR") == 0) {
-          log_level == LOG_LEVEL_ERROR;
+          log_level = LOG_LEVEL_ERROR;
         } else {
           fprintf(
               stderr,
               "Error: Invalid log level for '--log-level'. Please specify one "
               "of the following log levels: DEBUG, INFO, WARN, ERROR.\n");
+          free_native_library_resolver(native_library_resolver);
 
           return 1;
         }
@@ -95,6 +148,26 @@ int main(int argc, char **argv) {
         fprintf(stderr,
                 "Error: Missing log level for '--log-level'. Please specify a "
                 "valid log level (DEBUG, INFO, WARN, ERROR).\n");
+        free_native_library_resolver(native_library_resolver);
+
+        return 1;
+      }
+    } else if (strcmp(argv[i], "--library-path") == 0) {
+      if (i + 1 < argc) {
+        if (append_native_library_resolver(&native_library_resolver,
+                                           argv[i + 1]) != 0) {
+          fprintf(stderr,
+                  "Error: Unable to add the native library search path.\n");
+          free_native_library_resolver(native_library_resolver);
+
+          return 1;
+        }
+
+        i++;
+      } else {
+        fprintf(stderr,
+                "Error: Missing directory path for '--library-path'.\n");
+        free_native_library_resolver(native_library_resolver);
 
         return 1;
       }
@@ -102,6 +175,7 @@ int main(int argc, char **argv) {
       if (file_name) {
         printf("Error: Invalid command line arguments.\n");
         print_help_message();
+        free_native_library_resolver(native_library_resolver);
 
         return 1;
       } else {
@@ -121,7 +195,10 @@ int main(int argc, char **argv) {
     loader = create_byte_code_loader(file_name);
 
     if (loader) {
+      loader->native_library_resolver = native_library_resolver;
       program = read_byte_code_file(loader);
+      loader->native_library_resolver = NULL;
+      free_native_library_resolver(native_library_resolver);
 
       if (disassemble) {
         printer = create_byte_code_printer(stdout, TRUE);
@@ -154,11 +231,14 @@ int main(int argc, char **argv) {
       }
     } else {
       printf("Error: The specified file \"%s\" does not exist.\n", file_name);
+      free_native_library_resolver(native_library_resolver);
       log_close();
 
       return 0;
     }
   } else {
+    free_native_library_resolver(native_library_resolver);
+
     if (argc != 1) {
       printf("Error: Invalid command line arguments.\n");
       printf("\n");

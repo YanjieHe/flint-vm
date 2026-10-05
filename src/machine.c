@@ -193,6 +193,7 @@ i32 run_machine(Machine *machine) {
   i32 base;
   i32 exit_code;
   i32 i;
+  i32 comparison_result;
 
   stack = machine->stack;
   is_gc_object = machine->is_gc_object;
@@ -537,6 +538,60 @@ i32 run_machine(Machine *machine) {
       sp--;
       break;
     }
+    case EQ_STRING: {
+      comparison_result = compare_strings(stack[sp - 1].obj_v->u.str_v,
+                                          stack[sp].obj_v->u.str_v);
+      stack[sp - 1].i32_v = comparison_result == 0;
+      is_gc_object[sp] = FALSE;
+      is_gc_object[sp - 1] = FALSE;
+      sp--;
+      break;
+    }
+    case NE_STRING: {
+      comparison_result = compare_strings(stack[sp - 1].obj_v->u.str_v,
+                                          stack[sp].obj_v->u.str_v);
+      stack[sp - 1].i32_v = comparison_result != 0;
+      is_gc_object[sp] = FALSE;
+      is_gc_object[sp - 1] = FALSE;
+      sp--;
+      break;
+    }
+    case GT_STRING: {
+      comparison_result = compare_strings(stack[sp - 1].obj_v->u.str_v,
+                                          stack[sp].obj_v->u.str_v);
+      stack[sp - 1].i32_v = comparison_result > 0;
+      is_gc_object[sp] = FALSE;
+      is_gc_object[sp - 1] = FALSE;
+      sp--;
+      break;
+    }
+    case LT_STRING: {
+      comparison_result = compare_strings(stack[sp - 1].obj_v->u.str_v,
+                                          stack[sp].obj_v->u.str_v);
+      stack[sp - 1].i32_v = comparison_result < 0;
+      is_gc_object[sp] = FALSE;
+      is_gc_object[sp - 1] = FALSE;
+      sp--;
+      break;
+    }
+    case GE_STRING: {
+      comparison_result = compare_strings(stack[sp - 1].obj_v->u.str_v,
+                                          stack[sp].obj_v->u.str_v);
+      stack[sp - 1].i32_v = comparison_result >= 0;
+      is_gc_object[sp] = FALSE;
+      is_gc_object[sp - 1] = FALSE;
+      sp--;
+      break;
+    }
+    case LE_STRING: {
+      comparison_result = compare_strings(stack[sp - 1].obj_v->u.str_v,
+                                          stack[sp].obj_v->u.str_v);
+      stack[sp - 1].i32_v = comparison_result <= 0;
+      is_gc_object[sp] = FALSE;
+      is_gc_object[sp - 1] = FALSE;
+      sp--;
+      break;
+    }
     case BIT_AND_I32: {
       stack[sp - 1].i32_v = (stack[sp - 1].i32_v & stack[sp].i32_v);
       sp--;
@@ -649,6 +704,18 @@ i32 run_machine(Machine *machine) {
     case PUSH_ARRAY_OBJECT: {
       STACK_POP_I32(offset);
       stack[sp].obj_v = stack[sp].obj_v->u.arr_v->u.obj_array[offset];
+      break;
+    }
+    case PUSH_STRING_CHAR: {
+      STACK_POP_I32(offset);
+      if (0 <= offset && offset < stack[sp].obj_v->u.str_v->length) {
+        stack[sp].i32_v = (i32)stack[sp].obj_v->u.str_v->characters[offset];
+        is_gc_object[sp] = FALSE;
+      } else {
+        SAVE_MACHINE_STATE(machine, sp, fp, pc);
+        machine->machine_status = RUNTIME_ERROR_STRING_INDEX_OUT_OF_RANGE;
+        return;
+      }
       break;
     }
     case POP_ARRAY_I32: {
@@ -1152,6 +1219,11 @@ i32 run_machine(Machine *machine) {
     FOUND_INTERFACE:
       break;
     }
+    case STRING_LENGTH: {
+      stack[sp].i32_v = stack[sp].obj_v->u.str_v->length;
+      is_gc_object[sp] = FALSE;
+      break;
+    }
     case INSTANCE_OF: {
       READ_1BYTE_U8(offset);
       stack[sp].i32_v = (stack[sp].obj_v->u.struct_v->meta_data ==
@@ -1160,4 +1232,4 @@ i32 run_machine(Machine *machine) {
     }
     }
   }
-}
+}

@@ -105,6 +105,7 @@ void test_native_primitive_argument_macros() {
 void test_native_object_argument_macros() {
   Machine *machine;
   String string;
+  u32 string_characters[] = {'t', 'e', 's', 't'};
   Array array;
   Structure structure;
   GCObject string_object;
@@ -115,7 +116,7 @@ void test_native_object_argument_macros() {
   machine->fp = 2;
 
   string.length = 4;
-  string.characters = "test";
+  string.characters = string_characters;
   string_object.kind = GCOBJECT_KIND_STRING;
   string_object.u.str_v = &string;
 

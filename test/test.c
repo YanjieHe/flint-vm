@@ -4,6 +4,7 @@
 
 #include "test_arithmetic.h"
 #include "test_array.h"
+#include "test_byte_code_loader.h"
 #include "test_closure.h"
 #include "test_function.h"
 #include "test_global_variable.h"
@@ -11,6 +12,8 @@
 #include "test_jump.h"
 #include "test_native_api.h"
 #include "test_structure.h"
+#include "test_string.h"
+#include "test_unicode.h"
 
 int total_tests;
 int passed_tests;
@@ -57,6 +60,11 @@ int main(int argc, char **argv) {
   RUN_TEST(test_create_an_illegal_array);
   RUN_TEST(test_access_array);
 
+  RUN_TEST(test_read_utf8_string);
+  RUN_TEST(test_read_empty_string);
+  RUN_TEST(test_read_invalid_utf8_string);
+  RUN_TEST(test_read_truncated_string);
+
   RUN_TEST(test_function_invocation);
   RUN_TEST(test_function_return_i32);
   RUN_TEST(test_function_factorial);
@@ -78,6 +86,11 @@ int main(int argc, char **argv) {
   RUN_TEST(test_structure);
   RUN_TEST(test_structure_get_field_value);
 
+  RUN_TEST(test_push_string_char);
+  RUN_TEST(test_push_string_char_out_of_range);
+  RUN_TEST(test_string_length);
+  RUN_TEST(test_string_comparisons);
+
   RUN_TEST(test_global_variable);
 
   RUN_TEST(test_closure_invocation);
@@ -89,6 +102,13 @@ int main(int argc, char **argv) {
   RUN_TEST(test_interface_dispatches_by_receiver_type);
   RUN_TEST(test_interface_dispatches_nonzero_method_index);
   RUN_TEST(test_interface_dispatches_multiple_interfaces);
+
+  RUN_TEST(test_decode_utf8_code_points);
+  RUN_TEST(test_decode_invalid_utf8);
+  RUN_TEST(test_encode_utf8_code_points);
+  RUN_TEST(test_encode_invalid_code_points);
+  RUN_TEST(test_utf8_utf32_conversion);
+  RUN_TEST(test_unicode_empty_and_invalid_arguments);
 
   test_results_summary();
 

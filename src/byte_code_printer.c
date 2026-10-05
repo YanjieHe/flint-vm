@@ -152,7 +152,7 @@ void print_native_function_info(ByteCodePrinter *printer,
   char *library_path;
 
   function_name = str_to_c_str(native_function->func_name);
-  library_path = str_to_c_str(native_function->library->library_path);
+  library_path = str_to_c_str(native_function->library->library_name);
   printf("native function: %s\n", function_name);
   printf("library path: %s\n", library_path);
   printf("args_size = %d\n", native_function->args_size);
@@ -165,7 +165,7 @@ void print_native_library_info(ByteCodePrinter *printer,
                                NativeLibrary *native_library) {
   char *library_path;
 
-  library_path = str_to_c_str(native_library->library_path);
+  library_path = str_to_c_str(native_library->library_name);
   printf("library path: %s\n", library_path);
 
   free(library_path);
