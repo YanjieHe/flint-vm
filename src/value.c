@@ -245,7 +245,7 @@ char *str_to_c_str(String *str) {
   }
 }
 
-int compare_strings(String *a, String *b) {
+int compare_strings(const String *a, const String *b) {
   i32 N;
   i32 i;
 

@@ -253,7 +253,7 @@ void free_string(String *str);
 UnicodeStatus make_string_from_utf8(const char *utf8, size_t byte_length,
                                     String **result);
 char *str_to_c_str(String *str);
-int compare_strings(String* a, String* b);
+int compare_strings(const String *a, const String *b);
 void free_gc_object(GCObject *gc_object);
 void init_function(Function *function);
 GCObject *wrap_string_into_gc_object(String *str);
