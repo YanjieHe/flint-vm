@@ -636,7 +636,6 @@ i32 run_machine(Machine *machine) {
         array = malloc(sizeof(Array));
         array->length = length;
 
-        sp++;
         stack[sp].obj_v = malloc(sizeof(GCObject));
         stack[sp].obj_v->u.arr_v = array;
         HEAP_PUT(machine->heap, stack[sp].obj_v);
@@ -679,31 +678,61 @@ i32 run_machine(Machine *machine) {
     }
     case PUSH_ARRAY_I32: {
       STACK_POP_I32(offset);
-      stack[sp].i32_v = stack[sp].obj_v->u.arr_v->u.i32_array[offset];
-      is_gc_object[sp] = 0;
+      if (0 <= offset && offset < stack[sp].obj_v->u.arr_v->length) {
+        stack[sp].i32_v = stack[sp].obj_v->u.arr_v->u.i32_array[offset];
+        is_gc_object[sp] = FALSE;
+      } else {
+        SAVE_MACHINE_STATE(machine, sp, fp, pc);
+        machine->machine_status = RUNTIME_ERROR_ARRAY_INDEX_OUT_OF_RANGE;
+        return;
+      }
       break;
     }
     case PUSH_ARRAY_I64: {
       STACK_POP_I32(offset);
-      stack[sp].i64_v = stack[sp].obj_v->u.arr_v->u.i64_array[offset];
-      is_gc_object[sp] = 0;
+      if (0 <= offset && offset < stack[sp].obj_v->u.arr_v->length) {
+        stack[sp].i64_v = stack[sp].obj_v->u.arr_v->u.i64_array[offset];
+        is_gc_object[sp] = FALSE;
+      } else {
+        SAVE_MACHINE_STATE(machine, sp, fp, pc);
+        machine->machine_status = RUNTIME_ERROR_ARRAY_INDEX_OUT_OF_RANGE;
+        return;
+      }
       break;
     }
     case PUSH_ARRAY_F32: {
       STACK_POP_I32(offset);
-      stack[sp].f32_v = stack[sp].obj_v->u.arr_v->u.f32_array[offset];
-      is_gc_object[sp] = 0;
+      if (0 <= offset && offset < stack[sp].obj_v->u.arr_v->length) {
+        stack[sp].f32_v = stack[sp].obj_v->u.arr_v->u.f32_array[offset];
+        is_gc_object[sp] = FALSE;
+      } else {
+        SAVE_MACHINE_STATE(machine, sp, fp, pc);
+        machine->machine_status = RUNTIME_ERROR_ARRAY_INDEX_OUT_OF_RANGE;
+        return;
+      }
       break;
     }
     case PUSH_ARRAY_F64: {
       STACK_POP_I32(offset);
-      stack[sp].f64_v = stack[sp].obj_v->u.arr_v->u.f64_array[offset];
-      is_gc_object[sp] = 0;
+      if (0 <= offset && offset < stack[sp].obj_v->u.arr_v->length) {
+        stack[sp].f64_v = stack[sp].obj_v->u.arr_v->u.f64_array[offset];
+        is_gc_object[sp] = FALSE;
+      } else {
+        SAVE_MACHINE_STATE(machine, sp, fp, pc);
+        machine->machine_status = RUNTIME_ERROR_ARRAY_INDEX_OUT_OF_RANGE;
+        return;
+      }
       break;
     }
     case PUSH_ARRAY_OBJECT: {
       STACK_POP_I32(offset);
-      stack[sp].obj_v = stack[sp].obj_v->u.arr_v->u.obj_array[offset];
+      if (0 <= offset && offset < stack[sp].obj_v->u.arr_v->length) {
+        stack[sp].obj_v = stack[sp].obj_v->u.arr_v->u.obj_array[offset];
+      } else {
+        SAVE_MACHINE_STATE(machine, sp, fp, pc);
+        machine->machine_status = RUNTIME_ERROR_ARRAY_INDEX_OUT_OF_RANGE;
+        return;
+      }
       break;
     }
     case PUSH_STRING_CHAR: {
@@ -720,38 +749,68 @@ i32 run_machine(Machine *machine) {
     }
     case POP_ARRAY_I32: {
       offset = stack[sp - 1].i32_v;
-      stack[sp - 2].obj_v->u.arr_v->u.i32_array[offset] = stack[sp].i32_v;
-      is_gc_object[sp - 2] = 0;
-      sp -= 3;
+      if (0 <= offset && offset < stack[sp - 2].obj_v->u.arr_v->length) {
+        stack[sp - 2].obj_v->u.arr_v->u.i32_array[offset] = stack[sp].i32_v;
+        is_gc_object[sp - 2] = FALSE;
+        sp -= 3;
+      } else {
+        SAVE_MACHINE_STATE(machine, sp, fp, pc);
+        machine->machine_status = RUNTIME_ERROR_ARRAY_INDEX_OUT_OF_RANGE;
+        return;
+      }
       break;
     }
     case POP_ARRAY_I64: {
       offset = stack[sp - 1].i32_v;
-      stack[sp - 2].obj_v->u.arr_v->u.i64_array[offset] = stack[sp].i64_v;
-      is_gc_object[sp - 2] = 0;
-      sp -= 3;
+      if (0 <= offset && offset < stack[sp - 2].obj_v->u.arr_v->length) {
+        stack[sp - 2].obj_v->u.arr_v->u.i64_array[offset] = stack[sp].i64_v;
+        is_gc_object[sp - 2] = FALSE;
+        sp -= 3;
+      } else {
+        SAVE_MACHINE_STATE(machine, sp, fp, pc);
+        machine->machine_status = RUNTIME_ERROR_ARRAY_INDEX_OUT_OF_RANGE;
+        return;
+      }
       break;
     }
     case POP_ARRAY_F32: {
       offset = stack[sp - 1].i32_v;
-      stack[sp - 2].obj_v->u.arr_v->u.f32_array[offset] = stack[sp].f32_v;
-      is_gc_object[sp - 2] = 0;
-      sp -= 3;
+      if (0 <= offset && offset < stack[sp - 2].obj_v->u.arr_v->length) {
+        stack[sp - 2].obj_v->u.arr_v->u.f32_array[offset] = stack[sp].f32_v;
+        is_gc_object[sp - 2] = FALSE;
+        sp -= 3;
+      } else {
+        SAVE_MACHINE_STATE(machine, sp, fp, pc);
+        machine->machine_status = RUNTIME_ERROR_ARRAY_INDEX_OUT_OF_RANGE;
+        return;
+      }
       break;
     }
     case POP_ARRAY_F64: {
       offset = stack[sp - 1].i32_v;
-      stack[sp - 2].obj_v->u.arr_v->u.f64_array[offset] = stack[sp].f64_v;
-      is_gc_object[sp - 2] = 0;
-      sp -= 3;
+      if (0 <= offset && offset < stack[sp - 2].obj_v->u.arr_v->length) {
+        stack[sp - 2].obj_v->u.arr_v->u.f64_array[offset] = stack[sp].f64_v;
+        is_gc_object[sp - 2] = FALSE;
+        sp -= 3;
+      } else {
+        SAVE_MACHINE_STATE(machine, sp, fp, pc);
+        machine->machine_status = RUNTIME_ERROR_ARRAY_INDEX_OUT_OF_RANGE;
+        return;
+      }
       break;
     }
     case POP_ARRAY_OBJECT: {
       offset = stack[sp - 1].i32_v;
-      stack[sp - 2].obj_v->u.arr_v->u.obj_array[offset] = stack[sp].obj_v;
-      is_gc_object[sp] = 0;
-      is_gc_object[sp - 2] = 0;
-      sp -= 3;
+      if (0 <= offset && offset < stack[sp - 2].obj_v->u.arr_v->length) {
+        stack[sp - 2].obj_v->u.arr_v->u.obj_array[offset] = stack[sp].obj_v;
+        is_gc_object[sp] = FALSE;
+        is_gc_object[sp - 2] = FALSE;
+        sp -= 3;
+      } else {
+        SAVE_MACHINE_STATE(machine, sp, fp, pc);
+        machine->machine_status = RUNTIME_ERROR_ARRAY_INDEX_OUT_OF_RANGE;
+        return;
+      }
       break;
     }
     case CAST_I32_TO_I64: {
@@ -1217,6 +1276,11 @@ i32 run_machine(Machine *machine) {
       machine->machine_status = RUNTIME_ERROR_INTERFACE_METHOD_NOT_FOUND;
       return;
     FOUND_INTERFACE:
+      break;
+    }
+    case ARRAY_LENGTH: {
+      stack[sp].i32_v = stack[sp].obj_v->u.arr_v->length;
+      is_gc_object[sp] = FALSE;
       break;
     }
     case STRING_LENGTH: {

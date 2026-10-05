@@ -4,6 +4,44 @@
 #include "type.h"
 #include "byte_code_loader.h"
 
+static void test_array_length() {
+  Program *program;
+  Machine *machine;
+  Byte code[] = {PUSH_I32_1BYTE, 15, NEW_ARRAY, TYPE_I32, ARRAY_LENGTH,
+                 PUSH_I32_0, HALT};
+
+  program = create_program_with_single_function(__FUNCTION__, code,
+                                                sizeof(code) / sizeof(Byte));
+  machine = create_machine(100);
+
+  load_program(machine, program);
+  run_machine(machine);
+
+  ASSERT_EQUAL(machine->stack[machine->sp].i32_v, 15);
+  ASSERT_EQUAL(machine->is_gc_object[machine->sp], FALSE);
+  ASSERT_EQUAL(machine->machine_status, MACHINE_STOPPED);
+
+  free_program(program);
+  free_machine(machine);
+}
+
+static void assert_array_index_error(Byte *code, size_t code_length) {
+  Program *program;
+  Machine *machine;
+
+  program = create_program_with_single_function(__FUNCTION__, code, code_length);
+  machine = create_machine(100);
+
+  load_program(machine, program);
+  run_machine(machine);
+
+  ASSERT_EQUAL(machine->machine_status,
+               RUNTIME_ERROR_ARRAY_INDEX_OUT_OF_RANGE);
+
+  free_program(program);
+  free_machine(machine);
+}
+
 void test_create_an_array() {
   Program *program;
   Machine *machine;
@@ -20,10 +58,13 @@ void test_create_an_array() {
   ASSERT_EQUAL(machine->stack[machine->sp].obj_v->kind,
                GCOBJECT_KIND_I32_ARRAY);
   ASSERT_EQUAL(machine->is_gc_object[machine->sp], 1);
+  ASSERT_EQUAL(machine->sp, 0);
   ASSERT_EQUAL(machine->machine_status, MACHINE_STOPPED);
 
   free_program(program);
   free_machine(machine);
+
+  test_array_length();
 }
 
 void test_create_an_illegal_array() {
@@ -51,6 +92,16 @@ void test_access_array() {
   Program *program;
   Machine *machine;
   GCObject *array_obj;
+  Byte negative_read_code[] = {PUSH_I32_1BYTE, 5, NEW_ARRAY, TYPE_I32,
+                               PUSH_I32_1, MINUS_I32, PUSH_ARRAY_I32};
+  Byte upper_bound_read_code[] = {PUSH_I32_1BYTE, 5, NEW_ARRAY, TYPE_I32,
+                                  PUSH_I32_1BYTE, 5, PUSH_ARRAY_I32};
+  Byte negative_write_code[] = {PUSH_I32_1BYTE, 5, NEW_ARRAY, TYPE_I32,
+                                PUSH_I32_1, MINUS_I32, PUSH_I32_0,
+                                POP_ARRAY_I32};
+  Byte upper_bound_write_code[] = {PUSH_I32_1BYTE, 5, NEW_ARRAY, TYPE_I32,
+                                   PUSH_I32_1BYTE, 5, PUSH_I32_0,
+                                   POP_ARRAY_I32};
   Byte code[] = {/* create an integer 64 array */
                  PUSH_I32_1BYTE, 5, NEW_ARRAY, TYPE_I64,
                  /* store it as a local variable */
@@ -89,4 +140,13 @@ void test_access_array() {
 
   free_program(program);
   free_machine(machine);
+
+  assert_array_index_error(negative_read_code,
+                           sizeof(negative_read_code) / sizeof(Byte));
+  assert_array_index_error(upper_bound_read_code,
+                           sizeof(upper_bound_read_code) / sizeof(Byte));
+  assert_array_index_error(negative_write_code,
+                           sizeof(negative_write_code) / sizeof(Byte));
+  assert_array_index_error(upper_bound_write_code,
+                           sizeof(upper_bound_write_code) / sizeof(Byte));
 }
